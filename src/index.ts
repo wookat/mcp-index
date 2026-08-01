@@ -1,0 +1,315 @@
+import { Hono } from 'hono';
+import { ITEMS, BY_SLUG, CATEGORIES, STATS, GENERATED_AT, catSlug, search, Query, Item } from './data';
+import { layout, esc, card, pager, starFmt, daysAgo, ACTIVITY_LABEL, SITE } from './html';
+
+const INDEXNOW_KEY = '8b38cfa490ebd06f8b4ec7290a002646';
+
+type Env = { METRICS: KVNamespace };
+
+const app = new Hono<{ Bindings: Env }>();
+
+const INSTALL_LABEL: Record<string, string> = {
+  npx: 'npm / npx', uvx: 'Python (uvx / pip)', docker: 'Docker', 'go-install': 'Go', cargo: 'Rust (cargo)',
+  dotnet: '.NET', jar: 'Java', source: 'From source', 'skill-md': 'SKILL.md',
+};
+
+function parseQuery(c: { req: { query: (k: string) => string | undefined } }): Query {
+  return {
+    q: c.req.query('q') || undefined,
+    type: c.req.query('type') || undefined,
+    category: c.req.query('category') || undefined,
+    lang: c.req.query('lang') || undefined,
+    activity: c.req.query('activity') || undefined,
+    install: c.req.query('install') || undefined,
+    sort: c.req.query('sort') || undefined,
+    page: parseInt(c.req.query('page') || '1', 10) || 1,
+  };
+}
+
+const LANGS = (() => {
+  const m = new Map<string, number>();
+  for (const i of ITEMS) if (i.language) m.set(i.language, (m.get(i.language) || 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([l]) => l);
+})();
+
+function filterBar(q: Query, action: string): string {
+  const sel = (name: string, opts: [string, string][], cur?: string) =>
+    `<select name="${name}" onchange="this.form.submit()"><option value="">${name[0].toUpperCase() + name.slice(1)}: all</option>${opts
+      .map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`)
+      .join('')}</select>`;
+  return `<form method="get" action="${action}">
+<div class="searchbar" style="margin:0 0 6px"><input type="search" name="q" placeholder="Search by name, description, topic…" value="${esc(q.q || '')}"><button class="btn" type="submit">Search</button></div>
+<div class="filters">
+${action === '/search' ? sel('type', [['server', 'MCP Server'], ['skill', 'Agent Skill']], q.type) : q.type ? `<input type="hidden" name="type" value="${esc(q.type)}">` : ''}
+${sel('category', CATEGORIES.slice(0, 60).map((c) => [c.slug, `${c.name} (${c.count})`]), q.category)}
+${sel('lang', LANGS.map((l) => [l, l]), q.lang)}
+${sel('activity', Object.entries(ACTIVITY_LABEL).filter(([k]) => k !== 'unknown').map(([k, v]) => [k, v] as [string, string]), q.activity)}
+${sel('install', Object.entries(INSTALL_LABEL).map(([k, v]) => [k, v] as [string, string]), q.install)}
+${sel('sort', [['stars', 'Most stars'], ['updated', 'Recently updated']], q.sort)}
+</div></form>`;
+}
+
+function listPage(c: any, q: Query, opts: { path: string; title: string; h1: string; desc: string; action: string }) {
+  const { results, total, pages } = search(q);
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) if (v && k !== 'page') qs.set(k, String(v));
+  const base = opts.action + (qs.toString() ? '?' + qs.toString() : '');
+  const body = `<main class="wrap">
+<div class="crumbs"><a href="/">Home</a> › ${esc(opts.h1)}</div>
+<div class="section" style="margin-top:12px">
+<h2>${esc(opts.h1)}</h2>
+<p class="sub">${esc(opts.desc)} — ${total.toLocaleString()} result${total === 1 ? '' : 's'}.</p>
+</div>
+${filterBar(q, opts.action)}
+<div class="grid">${results.map(card).join('')}</div>
+${results.length === 0 ? '<p style="color:var(--muted);text-align:center;margin:40px 0">No results. Try a different search or clear filters.</p>' : ''}
+${pager(base, q.page, pages)}
+</main>`;
+  return c.html(layout({ title: opts.title, desc: opts.desc, path: opts.path, body }));
+}
+
+app.get('/', (c) => {
+  const top = ITEMS.slice(0, 12);
+  const recent = [...ITEMS].sort((a, b) => b.pushedAt.localeCompare(a.pushedAt)).slice(0, 6);
+  const body = `
+<div class="hero"><div class="wrap">
+<h1>Find the right <span class="grad">MCP server</span><br>and <span class="grad">agent skill</span>, fast</h1>
+<p class="sub">A structured, quality-scored directory of ${STATS.servers.toLocaleString()} Model Context Protocol servers and ${STATS.skills.toLocaleString()} agent skills — with maintenance signals, install methods and stars. Refreshed weekly.</p>
+<form method="get" action="/search"><div class="searchbar"><input type="search" name="q" placeholder="Try: postgres, browser automation, stripe…"><button class="btn" type="submit">Search</button></div></form>
+<div class="stats">
+<span class="stat"><b>${STATS.servers.toLocaleString()}</b> servers</span>
+<span class="stat"><b>${STATS.skills.toLocaleString()}</b> skills</span>
+<span class="stat"><b>${STATS.categories}</b> categories</span>
+<span class="stat"><b>${STATS.active.toLocaleString()}</b> active repos</span>
+</div>
+</div></div>
+<main class="wrap">
+<div class="section">
+<h2>Top rated</h2>
+<p class="sub">Highest quality score: stars × maintenance activity × license × docs signals.</p>
+<div class="grid">${top.map(card).join('')}</div>
+<p><a class="chip" href="/servers">Browse all servers →</a> <a class="chip" href="/skills">Browse all skills →</a></p>
+</div>
+<div class="section">
+<h2>Recently updated</h2>
+<div class="grid">${recent.map(card).join('')}</div>
+</div>
+<div class="section">
+<h2>Browse by category</h2>
+<div class="catgrid">${CATEGORIES.slice(0, 36).map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>
+<p style="margin-top:12px"><a class="chip" href="/categories">All ${STATS.categories} categories →</a></p>
+</div>
+</main>`;
+  const jsonld = JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'WebSite', name: 'MCP Index', url: SITE,
+    potentialAction: { '@type': 'SearchAction', target: `${SITE}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' },
+  });
+  return c.html(layout({
+    title: `MCP Index — ${STATS.servers.toLocaleString()}+ MCP Servers & Agent Skills Directory`,
+    desc: `Searchable directory of ${STATS.servers.toLocaleString()} Model Context Protocol servers and ${STATS.skills.toLocaleString()} agent skills with quality scores, maintenance activity, stars and install methods. Updated weekly.`,
+    path: '/', body, jsonld,
+  }));
+});
+
+app.get('/search', (c) => {
+  const q = parseQuery(c);
+  return listPage(c, q, {
+    path: '/search', action: '/search',
+    title: q.q ? `${q.q} — Search MCP Index` : 'Search — MCP Index',
+    h1: q.q ? `Search: ${q.q}` : 'Search',
+    desc: 'Search MCP servers and agent skills by name, description, category or topic',
+  });
+});
+
+app.get('/servers', (c) => {
+  const q = parseQuery(c); q.type = 'server';
+  return listPage(c, q, {
+    path: '/servers', action: '/servers',
+    title: `All ${STATS.servers.toLocaleString()} MCP Servers — MCP Index`,
+    h1: 'MCP Servers',
+    desc: 'Browse all Model Context Protocol servers with quality scores, stars, languages and maintenance activity',
+  });
+});
+
+app.get('/skills', (c) => {
+  const q = parseQuery(c); q.type = 'skill';
+  return listPage(c, q, {
+    path: '/skills', action: '/skills',
+    title: `All ${STATS.skills.toLocaleString()} Agent Skills — MCP Index`,
+    h1: 'Agent Skills',
+    desc: 'Browse SKILL.md-based agent skills for Claude Code, Codex, Cursor, Gemini CLI and more',
+  });
+});
+
+app.get('/categories', (c) => {
+  const body = `<main class="wrap">
+<div class="crumbs"><a href="/">Home</a> › Categories</div>
+<div class="section" style="margin-top:12px"><h2>All categories</h2>
+<p class="sub">${STATS.categories} categories across ${STATS.total.toLocaleString()} entries.</p>
+<div class="catgrid">${CATEGORIES.map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>
+</div></main>`;
+  return c.html(layout({ title: 'All Categories — MCP Index', desc: `Browse ${STATS.categories} categories of MCP servers and agent skills.`, path: '/categories', body }));
+});
+
+app.get('/category/:slug', (c) => {
+  const slug = c.req.param('slug');
+  const cat = CATEGORIES.find((x) => x.slug === slug);
+  if (!cat) return c.notFound();
+  const q = parseQuery(c); q.category = slug;
+  return listPage(c, q, {
+    path: `/category/${slug}`, action: `/category/${slug}`,
+    title: `${cat.name} — ${cat.count} MCP Servers & Skills — MCP Index`,
+    h1: cat.name,
+    desc: `${cat.count} MCP servers and agent skills in the ${cat.name} category, ranked by quality score`,
+  });
+});
+
+function installSnippet(i: Item): { label: string; code: string } | null {
+  const pkgGuess = i.repo.split('/')[1];
+  if (i.type === 'skill') {
+    return {
+      label: 'Install this skill (Claude Code)',
+      code: `# Clone and copy the skill into your project\ngit clone https://github.com/${i.repo}.git\nmkdir -p .claude/skills\ncp -r ${i.repo.split('/')[1]}/${i.subpath || ''} .claude/skills/\n# Or for personal use: ~/.claude/skills/`,
+    };
+  }
+  if (i.install === 'npx') {
+    return {
+      label: 'Example client config (verify package name in the repo README)',
+      code: `{\n  "mcpServers": {\n    "${pkgGuess}": {\n      "command": "npx",\n      "args": ["-y", "${pkgGuess}"]\n    }\n  }\n}`,
+    };
+  }
+  if (i.install === 'uvx') {
+    return {
+      label: 'Example client config (verify package name in the repo README)',
+      code: `{\n  "mcpServers": {\n    "${pkgGuess}": {\n      "command": "uvx",\n      "args": ["${pkgGuess}"]\n    }\n  }\n}`,
+    };
+  }
+  if (i.install === 'docker') {
+    return { label: 'Run with Docker (see repo README for the image name)', code: `docker run -i --rm <image-for-${pkgGuess}>` };
+  }
+  if (i.install === 'go-install') {
+    return { label: 'Install with Go', code: `go install github.com/${i.repo}@latest` };
+  }
+  if (i.install === 'cargo') {
+    return { label: 'Build from source (Rust)', code: `git clone https://github.com/${i.repo}.git\ncd ${pkgGuess}\ncargo build --release` };
+  }
+  return { label: 'Install from source', code: `git clone https://github.com/${i.repo}.git\n# See the repository README for setup instructions` };
+}
+
+app.get('/s/:slug', (c) => {
+  const i = BY_SLUG.get(c.req.param('slug'));
+  if (!i) return c.notFound();
+  const snip = installSnippet(i);
+  const related = ITEMS.filter((x) => x.category === i.category && x.slug !== i.slug).slice(0, 6);
+  const body = `<main class="wrap">
+<div class="crumbs"><a href="/">Home</a> › <a href="/${i.type === 'server' ? 'servers' : 'skills'}">${i.type === 'server' ? 'Servers' : 'Skills'}</a> › <a href="/category/${catSlug(i.category)}">${esc(i.category)}</a> › ${esc(i.name)}</div>
+<div class="detail-head">
+<div class="badges">
+<span class="badge type-${i.type}">${i.type === 'server' ? 'MCP Server' : 'Agent Skill'}</span>
+${i.official ? '<span class="badge official">Official</span>' : ''}
+<span class="badge act-${i.activity}">${ACTIVITY_LABEL[i.activity]}</span>
+${i.license ? `<span class="badge">${esc(i.license)}</span>` : ''}
+${i.scopes.map((s) => `<span class="badge">${esc(s)}</span>`).join('')}
+</div>
+<h1>${esc(i.name)}</h1>
+<p style="color:var(--muted);max-width:760px">${esc(i.description)}</p>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<div class="scorebar" style="width:200px"><i style="width:${i.score}%"></i></div>
+<span style="font-size:13px;color:var(--muted)">Quality score <b style="color:var(--text)">${i.score}/100</b></span>
+</div>
+<div><a class="btn" style="display:inline-block;text-decoration:none" href="${esc(i.url)}" data-track="repo_click" rel="noopener nofollow">View on GitHub →</a></div>
+</div>
+<div class="kv">
+<div class="cell"><div class="k">Stars</div><div class="v">★ ${starFmt(i.stars)}</div></div>
+<div class="cell"><div class="k">Last commit</div><div class="v">${daysAgo(i.pushedAt)}</div></div>
+<div class="cell"><div class="k">Language</div><div class="v">${esc(i.language || '—')}</div></div>
+<div class="cell"><div class="k">Install</div><div class="v">${esc(INSTALL_LABEL[i.install] || i.install)}</div></div>
+<div class="cell"><div class="k">Category</div><div class="v"><a href="/category/${catSlug(i.category)}">${esc(i.category)}</a></div></div>
+<div class="cell"><div class="k">Repository</div><div class="v"><a href="https://github.com/${esc(i.repo)}" rel="noopener nofollow">${esc(i.repo)}</a></div></div>
+</div>
+${snip ? `<div class="section"><h2>Installation</h2><p class="sub">${esc(snip.label)}</p><pre class="code"><button class="copybtn" type="button">Copy</button><code>${esc(snip.code)}</code></pre></div>` : ''}
+${i.topics.length ? `<div class="section"><h2>Topics</h2><div class="topics">${i.topics.map((t) => `<a class="chip" href="/search?q=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div></div>` : ''}
+${related.length ? `<div class="section"><h2>Related in ${esc(i.category)}</h2><div class="grid">${related.map(card).join('')}</div></div>` : ''}
+</main>`;
+  const jsonld = JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+    name: i.name, description: i.description, url: `${SITE}/s/${i.slug}`,
+    applicationCategory: 'DeveloperApplication', operatingSystem: 'Cross-platform',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    aggregateRating: i.stars > 5 ? { '@type': 'AggregateRating', ratingValue: Math.max(1, Math.min(5, i.score / 20)).toFixed(1), ratingCount: i.stars } : undefined,
+    sameAs: [`https://github.com/${i.repo}`],
+  });
+  return c.html(layout({
+    title: `${i.name} — ${i.type === 'server' ? 'MCP Server' : 'Agent Skill'} — MCP Index`,
+    desc: `${i.description.slice(0, 150)} | ★${starFmt(i.stars)}, ${ACTIVITY_LABEL[i.activity]}, ${i.language || 'n/a'}. Install method, quality score and maintenance signals.`,
+    path: `/s/${i.slug}`, body, jsonld,
+  }));
+});
+
+app.get('/about', (c) => {
+  const body = `<main class="wrap"><div class="section" style="max-width:760px">
+<div class="crumbs" style="margin-bottom:12px"><a href="/">Home</a> › About</div>
+<h2>About MCP Index</h2>
+<p style="margin:12px 0;color:var(--muted)">MCP Index is a structured directory of Model Context Protocol (MCP) servers and SKILL.md-based agent skills. Every entry is enriched with live GitHub metadata — stars, last-commit recency, language, license — and given a transparent heuristic quality score so you can quickly judge whether a project is production-ready or abandoned.</p>
+<h2 style="margin-top:28px">FAQ</h2>
+<h3 style="margin:16px 0 6px">What is an MCP server?</h3>
+<p style="color:var(--muted)">MCP (Model Context Protocol) is an open protocol that lets AI models securely use external tools and data sources. An MCP server exposes tools (APIs, databases, browsers, file systems…) to any MCP-compatible client such as Claude Desktop, Claude Code, Cursor, VS Code or Windsurf.</p>
+<h3 style="margin:16px 0 6px">What is an agent skill?</h3>
+<p style="color:var(--muted)">An agent skill is a folder with a SKILL.md file (instructions plus optional scripts) that AI coding agents like Claude Code, Codex CLI or Gemini CLI load on demand to perform a specialized task.</p>
+<h3 style="margin:16px 0 6px">How is the quality score computed?</h3>
+<p style="color:var(--muted)">0–100, from: log-scaled GitHub stars (max 40), maintenance activity based on last commit (max 25), license present (10), official status (10), not archived (5), meaningful description (5), topics (5). It is a heuristic signal, not an endorsement.</p>
+<h3 style="margin:16px 0 6px">Where does the data come from?</h3>
+<p style="color:var(--muted)">Public curated lists — <a href="https://github.com/modelcontextprotocol/servers" rel="noopener">modelcontextprotocol/servers</a>, <a href="https://github.com/punkpeye/awesome-mcp-servers" rel="noopener">punkpeye/awesome-mcp-servers</a>, <a href="https://github.com/VoltAgent/awesome-agent-skills" rel="noopener">VoltAgent/awesome-agent-skills</a> — enriched via the GitHub API. The pipeline reruns weekly; dead repos are dropped automatically. The dataset and pipeline are open source on <a href="https://github.com/wookat/mcp-index" rel="noopener">GitHub</a>.</p>
+<h3 style="margin:16px 0 6px">How do I add or remove a listing?</h3>
+<p style="color:var(--muted)">Get your project added to one of the upstream curated lists, or open an issue on our GitHub repository.</p>
+</div></main>`;
+  return c.html(layout({ title: 'About & FAQ — MCP Index', desc: 'What MCP Index is, how the quality score works, and where the data comes from.', path: '/about', body }));
+});
+
+app.get('/robots.txt', (c) => c.text(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${SITE}/sitemap.xml\n`));
+
+app.get(`/${INDEXNOW_KEY}.txt`, (c) => c.text(INDEXNOW_KEY));
+
+app.get('/sitemap.xml', (c) => {
+  const urls: string[] = ['/', '/servers', '/skills', '/categories', '/about',
+    ...CATEGORIES.map((cat) => `/category/${cat.slug}`),
+    ...ITEMS.map((i) => `/s/${i.slug}`)];
+  const lastmod = GENERATED_AT.slice(0, 10);
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+    .map((u) => `<url><loc>${SITE}${u}</loc><lastmod>${lastmod}</lastmod></url>`)
+    .join('\n')}\n</urlset>`;
+  return c.body(xml, 200, { 'Content-Type': 'application/xml' });
+});
+
+app.post('/api/track', async (c) => {
+  try {
+    const { ev } = await c.req.json<{ ev: string }>();
+    const allowed = ['pageview', 'copy_install', 'repo_click', 'github_click'];
+    if (!allowed.includes(ev)) return c.json({ ok: false }, 400);
+    const day = new Date().toISOString().slice(0, 10);
+    const key = `m:${day}:${ev}`;
+    const cur = parseInt((await c.env.METRICS.get(key)) || '0', 10);
+    await c.env.METRICS.put(key, String(cur + 1), { expirationTtl: 60 * 60 * 24 * 400 });
+  } catch { /* ignore malformed beacons */ }
+  return c.json({ ok: true });
+});
+
+app.get('/api/stats', async (c) => {
+  const out: Record<string, Record<string, number>> = {};
+  for (let d = 0; d < 14; d++) {
+    const day = new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+    out[day] = {};
+    for (const ev of ['pageview', 'copy_install', 'repo_click', 'github_click']) {
+      const v = await c.env.METRICS.get(`m:${day}:${ev}`);
+      if (v) out[day][ev] = parseInt(v, 10);
+    }
+  }
+  return c.json({ dataset: { generatedAt: GENERATED_AT, ...STATS }, metrics: out });
+});
+
+app.notFound((c) => c.html(layout({
+  title: 'Not found — MCP Index', desc: 'Page not found', path: '/404',
+  body: `<main class="wrap"><div class="section" style="text-align:center;padding:60px 0"><h2>404 — Not found</h2><p class="sub" style="margin:10px 0 20px">This entry may have been removed in a weekly refresh.</p><a class="btn" style="text-decoration:none" href="/">Back to home</a></div></main>`,
+}), 404));
+
+export default app;

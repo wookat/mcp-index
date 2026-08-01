@@ -1,0 +1,24 @@
+{
+  "name": "mcp-index",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "pipeline": "node pipeline/fetch.mjs && node pipeline/parse.mjs && node pipeline/enrich.mjs && node pipeline/build.mjs && node pipeline/readme.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hono": "^4.12.33"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.118.0"
+  },
+  "private": true,
+  "type": "module"
+}

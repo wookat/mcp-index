@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mcp-index",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "routes": [
+    { "pattern": "mcp.zalize.com", "custom_domain": true }
+  ],
+  "kv_namespaces": [
+    { "binding": "METRICS", "id": "e7bd9f3b70774a06b54f9ced1026397f" }
+  ],
+  "observability": { "enabled": true }
+}

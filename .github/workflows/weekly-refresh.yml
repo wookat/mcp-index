@@ -1,0 +1,43 @@
+name: Weekly data refresh & deploy
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Run pipeline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node pipeline/fetch.mjs
+          node pipeline/parse.mjs
+          node pipeline/enrich.mjs --refresh
+          node pipeline/build.mjs
+          node pipeline/readme.mjs
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Commit refreshed data
+        run: |
+          git config user.name "mcp-index-bot"
+          git config user.email "actions@github.com"
+          git add data DIRECTORY.md
+          git diff --cached --quiet || git commit -m "chore: weekly data refresh $(date -u +%F)"
+          git push
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+      - name: Ping IndexNow
+        run: node pipeline/indexnow.mjs
