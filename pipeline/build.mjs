@@ -58,12 +58,15 @@ for (const e of entries) {
   out.push({
     slug: e.slug,
     type: e.type,
-    name: e.name,
+    name: e.name.split('#')[0],
     repo: e.repo,
     url: e.url,
     subpath: e.subpath,
     category: e.category,
-    description: (e.description || m.description || '').replace(/<[^>]+>/g, '').slice(0, 400),
+    description: (e.description || m.description || '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/^[^\p{L}\p{N}"'`\[(]+/u, '')
+      .slice(0, 400),
     official: e.official,
     language: m.language || e.languagesHint[0] || null,
     scopes: e.scopes,
