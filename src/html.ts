@@ -224,7 +224,7 @@ ${opts.jsonld ? `<script type="application/ld+json">${opts.jsonld}</script>` : '
 </head>
 <body>
 <header class="site"><div class="wrap">
-<a class="logo" href="/"><span class="dot">M</span>MCP Index</a>
+<a class="logo" href="/"><span class="dot" aria-hidden="true">M</span>MCP Index</a>
 ${headerSearch}
 <nav class="top">
 <a href="/servers"${cur('/servers')}>Servers</a>

@@ -32,9 +32,17 @@ const LANGS = (() => {
   return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([l]) => l);
 })();
 
+function matchesText(i: Item, q?: string): boolean {
+  if (!q) return true;
+  const terms = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const hay = `${i.name} ${i.repo} ${i.description} ${i.category} ${i.topics.join(' ')}`.toLowerCase();
+  return terms.every((t) => hay.includes(t));
+}
+
 /** Items matching every dimension of q except the excluded one (for facet counts). */
 function baseFor(q: Query, except: string): Item[] {
   return ITEMS.filter((i) =>
+    matchesText(i, q.q) &&
     (except === 'type' || !q.type || i.type === q.type) &&
     (except === 'category' || !q.category || catSlug(i.category) === q.category) &&
     (except === 'lang' || !q.lang || (i.language || '').toLowerCase() === q.lang.toLowerCase()) &&
@@ -71,8 +79,11 @@ ${facet('Category', 'category', CATEGORIES.slice(0, 24).map((c) => [c.slug, c.na
 ${facet('Language', 'lang', LANGS.map((l) => [l, l] as [string, string]), q.lang)}
 ${facet('Activity', 'activity', Object.entries(ACTIVITY_LABEL).filter(([k]) => k !== 'unknown') as [string, string][], q.activity)}
 ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, string][], q.install)}`;
-  return `<aside class="facets" aria-label="Filters">${inner}</aside>
-<details class="mfacets"><summary>Filters${[q.category, q.lang, q.activity, q.install].filter(Boolean).length ? ` (${[q.category, q.lang, q.activity, q.install].filter(Boolean).length} active)` : ''}</summary>${inner}</details>`;
+  const nActive = [q.category, q.lang, q.activity, q.install].filter(Boolean).length;
+  const clearHref = action + (q.q ? '?q=' + encodeURIComponent(q.q) : '');
+  const clear = nActive ? `<div class="facet"><a href="${esc(clearHref)}" style="color:var(--accent)">✕ Clear all filters<span>${nActive}</span></a></div>` : '';
+  return `<aside class="facets" aria-label="Filters">${clear}${inner}</aside>
+<details class="mfacets"><summary>Filters${nActive ? ` (${nActive} active)` : ''}</summary>${clear}${inner}</details>`;
 }
 
 function listPage(c: any, q: Query, opts: { path: string; title: string; h1: string; desc: string; action: string }) {
@@ -236,18 +247,29 @@ function installSnippet(i: Item): { label: string; code: string } | null {
   return { label: 'Install from source', code: `git clone https://github.com/${i.repo}.git\n# See the repository README for setup instructions` };
 }
 
-/** Mirrors pipeline/build.mjs qualityScore() so the breakdown always matches the published score. */
+/** Mirrors pipeline/build.mjs qualityScore(); components the dataset doesn't expose
+ * (description source, 100-point cap) are reconciled against the published score so
+ * the breakdown always sums to exactly i.score. */
 function scoreBreakdown(i: Item): { label: string; got: number; max: number }[] {
-  const stars = Math.min(40, Math.round(Math.log10(i.stars + 1) * 10));
+  let stars = Math.min(40, Math.round(Math.log10(i.stars + 1) * 10));
   const act = ({ active: 25, maintained: 18, stale: 8, inactive: 0, archived: 0 } as Record<string, number>)[i.activity] ?? 0;
+  const license = i.license ? 10 : 0;
+  const official = i.official ? 10 : 0;
+  const notArchived = i.archived ? 0 : 5;
+  const topics = i.topics.length >= 3 ? 5 : 0;
+  const known = stars + act + license + official + notArchived + topics;
+  // Pipeline scored the description bonus on the GitHub description, which isn't in the dataset.
+  const desc = Math.max(0, Math.min(5, i.score - known));
+  const over = known + desc - i.score; // >0 only when the pipeline capped the score at 100
+  if (over > 0) stars = Math.max(0, stars - over);
   return [
     { label: 'GitHub stars (log scale)', got: stars, max: 40 },
     { label: 'Maintenance activity', got: act, max: 25 },
-    { label: 'License present', got: i.license ? 10 : 0, max: 10 },
-    { label: 'Official project', got: i.official ? 10 : 0, max: 10 },
-    { label: 'Not archived', got: i.archived ? 0 : 5, max: 5 },
-    { label: 'Meaningful description', got: i.description.length > 30 ? 5 : 0, max: 5 },
-    { label: 'Repo topics set', got: i.topics.length >= 3 ? 5 : 0, max: 5 },
+    { label: 'License present', got: license, max: 10 },
+    { label: 'Official project', got: official, max: 10 },
+    { label: 'Not archived', got: notArchived, max: 5 },
+    { label: 'Meaningful description', got: desc, max: 5 },
+    { label: 'Repo topics set', got: topics, max: 5 },
   ];
 }
 
