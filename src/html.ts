@@ -52,6 +52,7 @@ nav.top a[aria-current]{color:var(--text)}
 .btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--border2)}
 /* layout with sidebar */
 .cols{display:grid;grid-template-columns:230px 1fr;gap:28px;align-items:start;margin-top:8px}
+.cols>*{min-width:0}
 aside.facets{position:sticky;top:76px;display:flex;flex-direction:column;gap:20px;max-height:calc(100vh - 96px);overflow-y:auto;padding-bottom:20px;scrollbar-width:thin}
 .facet h4{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:8px}
 .facet a{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:13.5px;font-weight:500;padding:5px 10px;border-radius:8px;line-height:1.4}
@@ -166,9 +167,12 @@ details.mfacets .facet{margin-top:14px}
 aside.detail-side{position:static}
 }
 @media(max-width:640px){
-header.site .wrap{gap:10px}
+body{overflow-x:hidden}
+header.site .wrap{gap:6px 10px;flex-wrap:wrap;height:auto;padding-top:9px;padding-bottom:9px}
 .hsearch{display:none}
-nav.top a{padding:6px 7px;font-size:12.5px}
+nav.top{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+nav.top a{padding:5px 6px;font-size:12.5px}
+.toolbar{justify-content:flex-start}
 .searchbar{flex-direction:column}
 .searchbar .btn{width:100%}
 .grid{grid-template-columns:1fr}
