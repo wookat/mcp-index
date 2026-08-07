@@ -9,7 +9,7 @@ export function esc(s: string): string {
 const CSS = `
 :root{
 --bg:#09090b;--bg2:#101014;--card:#121216;--card2:#18181d;--border:#26262c;--border2:#34343c;
---text:#f4f4f5;--text2:#d4d4d8;--muted:#9d9da8;--faint:#6e6e78;
+--text:#f4f4f5;--text2:#d4d4d8;--muted:#9d9da8;--faint:#8b8b96;
 --accent:#8b93ff;--accent-strong:#6a74f8;--accent-soft:rgba(139,147,255,.12);
 --green:#4ade80;--yellow:#fbbf24;--orange:#fb923c;--red:#f87171;
 --radius:12px;--radius-sm:8px;
@@ -54,7 +54,7 @@ nav.top a[aria-current]{color:var(--text)}
 .cols{display:grid;grid-template-columns:230px 1fr;gap:28px;align-items:start;margin-top:8px}
 .cols>*{min-width:0}
 aside.facets{position:sticky;top:76px;display:flex;flex-direction:column;gap:20px;max-height:calc(100vh - 96px);overflow-y:auto;padding-bottom:20px;scrollbar-width:thin}
-.facet h4{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:8px}
+.facet .fh{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:8px}
 .facet a{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:13.5px;font-weight:500;padding:5px 10px;border-radius:8px;line-height:1.4}
 .facet a:hover{color:var(--text);background:var(--card2);text-decoration:none}
 .facet a.on{color:var(--text);background:var(--accent-soft);font-weight:650}
@@ -88,6 +88,13 @@ details.mfacets{display:none}
 .badge.act-inactive,.badge.act-archived{color:var(--red)}
 .dotb{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:1px}
 .act-active .dotb{background:var(--green)}.act-maintained .dotb{background:var(--yellow)}.act-stale .dotb{background:var(--orange)}.act-inactive .dotb,.act-archived .dotb{background:var(--red)}
+.grade{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;font-size:12px;font-weight:800;flex:none;line-height:1}
+.grade-a{background:rgba(74,222,128,.14);color:var(--green);border:1px solid rgba(74,222,128,.4)}
+.grade-b{background:rgba(139,147,255,.12);color:var(--accent);border:1px solid rgba(139,147,255,.4)}
+.grade-c{background:rgba(251,191,36,.12);color:var(--yellow);border:1px solid rgba(251,191,36,.4)}
+.grade-d{background:rgba(251,146,60,.12);color:var(--orange);border:1px solid rgba(251,146,60,.4)}
+.grade-f{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.4)}
+kbd.hint{border:1px solid var(--border2);background:var(--bg2);color:var(--faint);border-radius:6px;padding:2px 7px;font-size:11.5px;font-family:ui-monospace,Menlo,monospace;align-self:center;margin-right:6px}
 .chip{display:inline-block;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:5px 13px;font-size:13px;font-weight:600}
 .chip:hover{color:var(--text);border-color:var(--accent);text-decoration:none}
 /* grid cards (home) */
@@ -152,6 +159,7 @@ footer.site .fcols{display:flex;gap:32px;flex-wrap:wrap;justify-content:space-be
 footer.site .fine{margin-top:18px;color:var(--faint);font-size:12px;max-width:880px;line-height:1.6}
 footer.site a{color:var(--muted)}
 footer.site a:hover{color:var(--text)}
+main p a,footer.site .fine a{text-decoration:underline}
 /* select filters (sort) */
 select.sel{background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin:14px 0 12px}
@@ -192,17 +200,18 @@ document.addEventListener('click',function(e){
   if(g){track(g.getAttribute('data-track'),location.pathname)}
 });
 document.addEventListener('keydown',function(e){
-  if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){
+  var focusSearch=(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))||((e.ctrlKey||e.metaKey)&&e.key==='k');
+  if(focusSearch){
     var i=document.querySelector('.hsearch input,.searchbar input');
     if(i){e.preventDefault();i.focus()}
   }
 });
 `;
 
-export function layout(opts: { title: string; desc: string; path: string; body: string; jsonld?: string }): string {
+export function layout(opts: { title: string; desc: string; path: string; body: string; jsonld?: string | string[] }): string {
   const canonical = SITE + opts.path;
   const cur = (p: string) => (opts.path === p || (p !== '/' && opts.path.startsWith(p)) ? ' aria-current="page"' : '');
-  const headerSearch = opts.path === '/' ? '' : `<form class="hsearch" method="get" action="/search"><input type="search" name="q" placeholder="Search ${STATS.total.toLocaleString()} servers &amp; skills…  ( / )" aria-label="Search"></form>`;
+  const headerSearch = opts.path === '/' ? '' : `<form class="hsearch" method="get" action="/search"><input type="search" name="q" placeholder="Search ${STATS.total.toLocaleString()} servers &amp; skills…" aria-label="Search"><kbd class="hint" aria-hidden="true" style="margin-left:-34px">/</kbd></form>`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -216,10 +225,14 @@ export function layout(opts: { title: string; desc: string; path: string; body: 
 <meta property="og:url" content="${canonical}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MCP Index">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="${SITE}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="${SITE}/og.png">
 <meta name="theme-color" content="#09090b">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%238b93ff'/><text x='50' y='68' font-size='52' text-anchor='middle' font-family='sans-serif' font-weight='bold' fill='%230b0b12'>M</text></svg>">
-${opts.jsonld ? `<script type="application/ld+json">${opts.jsonld}</script>` : ''}
+${(Array.isArray(opts.jsonld) ? opts.jsonld : opts.jsonld ? [opts.jsonld] : []).map((j) => `<script type="application/ld+json">${j}</script>`).join('\n')}
 <style>${CSS}</style>
 </head>
 <body>
@@ -242,7 +255,7 @@ ${opts.body}
 Data refreshed weekly from public sources. Last update: ${GENERATED_AT.slice(0, 10)}.
 </div>
 <div>
-<a href="/servers">MCP Servers</a> · <a href="/skills">Agent Skills</a> · <a href="/categories">Categories</a> · <a href="/about">About &amp; FAQ</a> · <a href="https://github.com/wookat/mcp-index" rel="noopener">GitHub</a>
+<a href="/servers">MCP Servers</a> · <a href="/skills">Agent Skills</a> · <a href="/categories">Categories</a> · <a href="/about">About &amp; FAQ</a> · <a href="/llms.txt">llms.txt</a> · <a href="https://github.com/wookat/mcp-index" rel="noopener">GitHub</a>
 </div>
 </div>
 <p class="fine">Disclaimer: MCP Index aggregates metadata from public sources (modelcontextprotocol/servers, awesome-mcp-servers, awesome-agent-skills, GitHub API). All listed projects belong to their respective authors under their own licenses. We are not affiliated with Anthropic or the Model Context Protocol project. Quality scores are heuristic signals, not endorsements — always review code before installing. No personal data is collected; anonymous page-view counters only.</p>
@@ -278,6 +291,11 @@ export function avatar(name: string, cls = 'avatar'): string {
   return `<span class="${cls}" style="background:linear-gradient(135deg,hsl(${hue},70%,74%),hsl(${(hue + 40) % 360},65%,62%))" aria-hidden="true">${esc(ch)}</span>`;
 }
 
+export function grade(score: number): string {
+  const g = score >= 80 ? 'A' : score >= 65 ? 'B' : score >= 50 ? 'C' : score >= 35 ? 'D' : 'F';
+  return `<span class="grade grade-${g.toLowerCase()}" title="Quality ${score}/100" aria-label="Quality grade ${g} (${score}/100)">${g}</span>`;
+}
+
 function badges(i: Item): string {
   return `<span class="badge type-${i.type}">${i.type === 'server' ? 'MCP Server' : 'Agent Skill'}</span>
 ${i.official ? '<span class="badge official">Official</span>' : ''}
@@ -288,7 +306,7 @@ export function row(i: Item): string {
   return `<article class="row">
 ${avatar(i.name)}
 <div class="body">
-<h3><a href="/s/${i.slug}">${esc(i.name)}</a> ${badges(i)}</h3>
+<h3><a href="/s/${i.slug}">${esc(i.name)}</a> ${grade(i.score)} ${badges(i)}</h3>
 <div class="repo">${esc(i.repo)}${i.subpath ? '/' + esc(i.subpath) : ''}</div>
 <p class="desc">${esc(i.description)}</p>
 <div class="meta">
@@ -304,7 +322,7 @@ ${i.language ? `<span>${esc(i.language)}</span>` : ''}
 
 export function card(i: Item): string {
   return `<article class="card">
-<div class="toprow">${avatar(i.name)}<div style="min-width:0"><h3><a href="/s/${i.slug}">${esc(i.name)}</a></h3><div class="repo">${esc(i.repo)}</div></div></div>
+<div class="toprow">${avatar(i.name)}<div style="min-width:0"><h3><a href="/s/${i.slug}">${esc(i.name)}</a> ${grade(i.score)}</h3><div class="repo">${esc(i.repo)}</div></div></div>
 <div class="badges">${badges(i)}</div>
 <p class="desc">${esc(i.description)}</p>
 <div class="meta">

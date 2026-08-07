@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { ITEMS, BY_SLUG, CATEGORIES, STATS, GENERATED_AT, catSlug, search, Query, Item } from './data';
-import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, ACTIVITY_LABEL, SITE } from './html';
+import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, grade, ACTIVITY_LABEL, SITE } from './html';
+import OG_IMAGE from './og.png';
 
 const INDEXNOW_KEY = '8b38cfa490ebd06f8b4ec7290a002646';
 
@@ -21,6 +22,7 @@ function parseQuery(c: { req: { query: (k: string) => string | undefined } }): Q
     lang: c.req.query('lang') || undefined,
     activity: c.req.query('activity') || undefined,
     install: c.req.query('install') || undefined,
+    official: c.req.query('official') || undefined,
     sort: c.req.query('sort') || undefined,
     page: parseInt(c.req.query('page') || '1', 10) || 1,
   };
@@ -47,7 +49,8 @@ function baseFor(q: Query, except: string): Item[] {
     (except === 'category' || !q.category || catSlug(i.category) === q.category) &&
     (except === 'lang' || !q.lang || (i.language || '').toLowerCase() === q.lang.toLowerCase()) &&
     (except === 'activity' || !q.activity || i.activity === q.activity) &&
-    (except === 'install' || !q.install || i.install === q.install));
+    (except === 'install' || !q.install || i.install === q.install) &&
+    (except === 'official' || !q.official || i.official));
 }
 
 function facetSidebar(q: Query, action: string): string {
@@ -64,22 +67,23 @@ function facetSidebar(q: Query, action: string): string {
     const base = baseFor(q, dim as string);
     const counts = new Map<string, number>();
     for (const i of base) {
-      const key = dim === 'type' ? i.type : dim === 'category' ? catSlug(i.category) : dim === 'lang' ? (i.language || '') : dim === 'activity' ? i.activity : i.install;
+      const key = dim === 'type' ? i.type : dim === 'category' ? catSlug(i.category) : dim === 'lang' ? (i.language || '') : dim === 'activity' ? i.activity : dim === 'official' ? (i.official ? 'yes' : '') : i.install;
       counts.set(key.toLowerCase(), (counts.get(key.toLowerCase()) || 0) + 1);
     }
     const rows = opts
       .map(([v, l]) => ({ v, l, n: counts.get(v.toLowerCase()) || 0 }))
       .filter((r) => r.n > 0 || r.v === cur);
     if (!rows.length) return '';
-    return `<div class="facet"><h4>${esc(title)}</h4>${rows.map((r) => link(dim, r.v, r.l, r.n, r.v === cur)).join('')}</div>`;
+    return `<div class="facet"><div class="fh">${esc(title)}</div>${rows.map((r) => link(dim, r.v, r.l, r.n, r.v === cur)).join('')}</div>`;
   };
   const inner = `
 ${action === '/search' ? facet('Type', 'type', [['server', 'MCP Servers'], ['skill', 'Agent Skills']], q.type) : ''}
+${facet('Status', 'official', [['yes', 'Official']], q.official)}
 ${facet('Category', 'category', CATEGORIES.slice(0, 24).map((c) => [c.slug, c.name] as [string, string]), q.category)}
 ${facet('Language', 'lang', LANGS.map((l) => [l, l] as [string, string]), q.lang)}
 ${facet('Activity', 'activity', Object.entries(ACTIVITY_LABEL).filter(([k]) => k !== 'unknown') as [string, string][], q.activity)}
 ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, string][], q.install)}`;
-  const nActive = [q.category, q.lang, q.activity, q.install].filter(Boolean).length;
+  const nActive = [q.category, q.lang, q.activity, q.install, q.official].filter(Boolean).length;
   const clearHref = action + (q.q ? '?q=' + encodeURIComponent(q.q) : '');
   const clear = nActive ? `<div class="facet"><a href="${esc(clearHref)}" style="color:var(--accent)">✕ Clear all filters<span>${nActive}</span></a></div>` : '';
   return `<aside class="facets" aria-label="Filters">${clear}${inner}</aside>
@@ -94,7 +98,7 @@ function listPage(c: any, q: Query, opts: { path: string; title: string; h1: str
   for (const [k, v] of Object.entries(q)) if (v && k !== 'page') qs.set(k, String(v));
   const base = opts.action + (qs.toString() ? '?' + qs.toString() : '');
   const sortSel = `<form method="get" action="${opts.action}">
-${['q', 'type', 'category', 'lang', 'activity', 'install'].map((k) => (q as any)[k] && !(opts.action !== '/search' && k === 'type') ? `<input type="hidden" name="${k}" value="${esc(String((q as any)[k]))}">` : '').join('')}
+${['q', 'type', 'category', 'lang', 'activity', 'install', 'official'].map((k) => (q as any)[k] && !(opts.action !== '/search' && k === 'type') ? `<input type="hidden" name="${k}" value="${esc(String((q as any)[k]))}">` : '').join('')}
 <label style="color:var(--faint);font-size:12.5px" for="sort">Sort</label>
 <select class="sel" id="sort" name="sort" onchange="this.form.submit()">
 <option value="">Quality score</option>
@@ -109,25 +113,33 @@ ${['q', 'type', 'category', 'lang', 'activity', 'install'].map((k) => (q as any)
 <div class="cols" style="margin-top:18px">
 ${facetSidebar(q, opts.action)}
 <div>
-<div class="toolbar"><div class="results-line"><b>${total.toLocaleString()}</b> result${total === 1 ? '' : 's'} <span style="color:var(--faint)">(${ms || '<1'}ms)</span></div>${sortSel}</div>
+<div class="toolbar"><div class="results-line"><b>${total.toLocaleString()}</b> result${total === 1 ? '' : 's'} <span style="color:var(--faint)">(${ms || '<1'}ms) · data updated ${GENERATED_AT.slice(0, 10)}</span></div>${sortSel}</div>
 <div class="rows">${results.map(row).join('')}</div>
 ${results.length === 0 ? '<p style="color:var(--muted);text-align:center;margin:40px 0">No results. Try a different search or clear filters.</p>' : ''}
 ${pager(base, q.page, pages)}
 </div>
 </div>
 </main>`;
-  return c.html(layout({ title: opts.title, desc: opts.desc, path: opts.path, body }));
+  const jsonld = JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'ItemList',
+    name: opts.h1, numberOfItems: total,
+    itemListElement: results.slice(0, 10).map((i, n) => ({
+      '@type': 'ListItem', position: (q.page - 1) * 48 + n + 1, name: i.name, url: `${SITE}/s/${i.slug}`,
+    })),
+  });
+  return c.html(layout({ title: opts.title, desc: opts.desc, path: opts.path, body, jsonld }));
 }
 
 app.get('/', (c) => {
   const top = ITEMS.slice(0, 12);
+  const official = ITEMS.filter((i) => i.official).slice(0, 6);
   const recent = [...ITEMS].sort((a, b) => b.pushedAt.localeCompare(a.pushedAt)).slice(0, 6);
   const body = `
 <div class="hero"><div class="wrap">
 <div class="eyebrow"><span class="pulse"></span>Refreshed weekly · last update ${GENERATED_AT.slice(0, 10)}</div>
 <h1>Find the right <span class="grad">MCP server</span><br>and <span class="grad">agent skill</span>, fast</h1>
 <p class="sub">A structured, quality-scored directory of ${STATS.servers.toLocaleString()} Model Context Protocol servers and ${STATS.skills.toLocaleString()} agent skills — with maintenance signals, install methods and stars.</p>
-<form method="get" action="/search"><div class="searchbar"><input type="search" name="q" placeholder="Try: postgres, browser automation, stripe…" autofocus><button class="btn" type="submit">Search</button></div></form>
+<form method="get" action="/search"><div class="searchbar"><input type="search" name="q" placeholder="Try: postgres, browser automation, stripe…" autofocus><kbd class="hint" aria-hidden="true">/</kbd><button class="btn" type="submit">Search</button></div></form>
 <div class="stats">
 <span class="stat"><b>${STATS.servers.toLocaleString()}</b> servers</span>
 <span class="stat"><b>${STATS.skills.toLocaleString()}</b> skills</span>
@@ -141,6 +153,12 @@ app.get('/', (c) => {
 <p class="sub">Highest quality score: stars × maintenance activity × license × docs signals.</p></div>
 <span class="more"><a href="/servers">All servers →</a> · <a href="/skills">All skills →</a></span></div>
 <div class="grid">${top.map(card).join('')}</div>
+</div>
+<div class="section">
+<div class="section-head"><div><h2>Official picks</h2>
+<p class="sub">Servers published by the vendor itself — first-party maintained.</p></div>
+<span class="more"><a href="/search?official=yes">All official →</a></span></div>
+<div class="grid">${official.map(card).join('')}</div>
 </div>
 <div class="section">
 <div class="section-head"><h2>Recently updated</h2></div>
@@ -299,7 +317,7 @@ ${i.scopes.map((s) => `<span class="badge">${esc(s)}</span>`).join('')}
 </div>
 <p style="color:var(--muted);max-width:720px;margin-top:16px">${esc(i.description)}</p>
 <div class="statchips">
-<span class="statchip">Quality <b>${i.score}/100</b></span>
+<span class="statchip" style="display:inline-flex;align-items:center;gap:7px">${grade(i.score)} Quality <b>${i.score}/100</b></span>
 <span class="statchip">★ <b>${starFmt(i.stars)}</b> stars</span>
 <span class="statchip">Updated <b>${daysAgo(i.pushedAt)}</b></span>
 ${i.language ? `<span class="statchip"><b>${esc(i.language)}</b></span>` : ''}
@@ -318,6 +336,7 @@ ${i.topics.length ? `<div class="section" style="margin:34px 0"><h2>Topics</h2><
 <aside class="detail-side">
 <div class="side-item"><div class="k">Quality score</div><div class="v" style="display:flex;align-items:center;gap:10px"><span>${i.score}/100</span><span class="scorebar" style="flex:1"><i style="width:${i.score}%"></i></span></div></div>
 <div class="side-item"><div class="k">Stars</div><div class="v">★ ${starFmt(i.stars)}</div></div>
+<div class="side-item"><div class="k">Forks</div><div class="v">${starFmt(i.forks)}</div></div>
 <div class="side-item"><div class="k">Last commit</div><div class="v">${daysAgo(i.pushedAt)}</div></div>
 <div class="side-item"><div class="k">Language</div><div class="v">${esc(i.language || '—')}</div></div>
 <div class="side-item"><div class="k">Install</div><div class="v">${esc(INSTALL_LABEL[i.install] || i.install)}</div></div>
@@ -328,6 +347,15 @@ ${i.topics.length ? `<div class="section" style="margin:34px 0"><h2>Topics</h2><
 </div>
 ${related.length ? `<div class="section"><h2>Related in ${esc(i.category)}</h2><div class="grid">${related.map(card).join('')}</div></div>` : ''}
 </main>`;
+  const breadcrumbLd = JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+      { '@type': 'ListItem', position: 2, name: i.type === 'server' ? 'Servers' : 'Skills', item: `${SITE}/${i.type === 'server' ? 'servers' : 'skills'}` },
+      { '@type': 'ListItem', position: 3, name: i.category, item: `${SITE}/category/${catSlug(i.category)}` },
+      { '@type': 'ListItem', position: 4, name: i.name, item: `${SITE}/s/${i.slug}` },
+    ],
+  });
   const jsonld = JSON.stringify({
     '@context': 'https://schema.org', '@type': 'SoftwareApplication',
     name: i.name, description: i.description, url: `${SITE}/s/${i.slug}`,
@@ -339,7 +367,7 @@ ${related.length ? `<div class="section"><h2>Related in ${esc(i.category)}</h2><
   return c.html(layout({
     title: `${i.name} — ${i.type === 'server' ? 'MCP Server' : 'Agent Skill'} — MCP Index`,
     desc: `${i.description.slice(0, 150)} | ★${starFmt(i.stars)}, ${ACTIVITY_LABEL[i.activity]}, ${i.language || 'n/a'}. Install method, quality score and maintenance signals.`,
-    path: `/s/${i.slug}`, body, jsonld,
+    path: `/s/${i.slug}`, body, jsonld: [jsonld, breadcrumbLd],
   }));
 });
 
@@ -360,8 +388,45 @@ app.get('/about', (c) => {
 <h3 style="margin:16px 0 6px;font-size:15.5px">How do I add or remove a listing?</h3>
 <p style="color:var(--muted)">Get your project added to one of the upstream curated lists, or open an issue on our GitHub repository.</p>
 </div></main>`;
-  return c.html(layout({ title: 'About & FAQ — MCP Index', desc: 'What MCP Index is, how the quality score works, and where the data comes from.', path: '/about', body }));
+  const faqLd = JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: [
+      { '@type': 'Question', name: 'What is an MCP server?', acceptedAnswer: { '@type': 'Answer', text: 'MCP (Model Context Protocol) is an open protocol that lets AI models securely use external tools and data sources. An MCP server exposes tools (APIs, databases, browsers, file systems…) to any MCP-compatible client such as Claude Desktop, Claude Code, Cursor, VS Code or Windsurf.' } },
+      { '@type': 'Question', name: 'What is an agent skill?', acceptedAnswer: { '@type': 'Answer', text: 'An agent skill is a folder with a SKILL.md file (instructions plus optional scripts) that AI coding agents like Claude Code, Codex CLI or Gemini CLI load on demand to perform a specialized task.' } },
+      { '@type': 'Question', name: 'How is the quality score computed?', acceptedAnswer: { '@type': 'Answer', text: '0–100, from: log-scaled GitHub stars (max 40), maintenance activity based on last commit (max 25), license present (10), official status (10), not archived (5), meaningful description (5), topics (5). Every entry\'s detail page shows its full per-component breakdown.' } },
+      { '@type': 'Question', name: 'Where does the data come from?', acceptedAnswer: { '@type': 'Answer', text: 'Public curated lists — modelcontextprotocol/servers, punkpeye/awesome-mcp-servers, VoltAgent/awesome-agent-skills — enriched via the GitHub API. The pipeline reruns weekly; dead repos are dropped automatically.' } },
+    ],
+  });
+  return c.html(layout({ title: 'About & FAQ — MCP Index', desc: 'What MCP Index is, how the quality score works, and where the data comes from.', path: '/about', body, jsonld: faqLd }));
 });
+
+app.get('/og.png', (c) => c.body(OG_IMAGE, 200, {
+  'Content-Type': 'image/png',
+  'Cache-Control': 'public, max-age=86400',
+}));
+
+app.get('/llms.txt', (c) => c.text(`# MCP Index
+
+> A structured, quality-scored directory of ${STATS.servers.toLocaleString()} Model Context Protocol (MCP) servers and ${STATS.skills.toLocaleString()} SKILL.md-based agent skills. Every entry carries live GitHub metadata (stars, forks, license, last commit), an install method, a maintenance-activity level and a transparent 0–100 quality score. Data refreshes weekly; last update ${GENERATED_AT.slice(0, 10)}.
+
+## Browse
+
+- [All MCP servers](${SITE}/servers): filterable list (category, language, activity, install method, official)
+- [All agent skills](${SITE}/skills): SKILL.md skills for Claude Code, Codex CLI, Gemini CLI and more
+- [Categories](${SITE}/categories): ${STATS.categories} functional categories
+- [Search](${SITE}/search?q=QUERY): full-text search over names, descriptions and topics
+- [About & FAQ](${SITE}/about): scoring methodology and data sources
+
+## Data
+
+- [Full dataset (JSON, MIT-licensed metadata)](https://github.com/wookat/mcp-index/blob/main/data/index.json): all fields for every entry
+- [Entry pages](${SITE}/sitemap.xml): every server/skill has a detail page at ${SITE}/s/SLUG with install snippet, score breakdown and repo links
+
+## Notes
+
+- Quality scores are heuristic signals, not endorsements. Always review code before installing.
+- MCP Index is not affiliated with Anthropic or the Model Context Protocol project.
+`));
 
 app.get('/robots.txt', (c) => c.text(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${SITE}/sitemap.xml\n`));
 
@@ -406,7 +471,8 @@ app.get('/api/stats', async (c) => {
 
 app.notFound((c) => c.html(layout({
   title: 'Not found — MCP Index', desc: 'Page not found', path: '/404',
-  body: `<main class="wrap"><div class="section" style="text-align:center;padding:60px 0"><h1 class="page">404 — Not found</h1><p style="color:var(--muted);margin:10px 0 20px">This entry may have been removed in a weekly refresh.</p><a class="btn" style="text-decoration:none" href="/">Back to home</a></div></main>`,
+  body: `<main class="wrap"><div class="section" style="text-align:center;padding:40px 0 0"><h1 class="page">404 — Not found</h1><p style="color:var(--muted);margin:10px 0 20px">This entry may have been removed in a weekly refresh.</p><a class="btn" style="text-decoration:none" href="/">Back to home</a></div>
+<div class="section"><div class="section-head"><h2>These ones exist</h2></div><div class="grid">${ITEMS.slice(0, 6).map(card).join('')}</div></div></main>`,
 }), 404));
 
 export default app;
