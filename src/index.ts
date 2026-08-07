@@ -114,6 +114,7 @@ ${['q', 'type', 'category', 'lang', 'activity', 'install', 'official'].map((k) =
 ${facetSidebar(q, opts.action)}
 <div>
 <div class="toolbar"><div class="results-line"><b>${total.toLocaleString()}</b> result${total === 1 ? '' : 's'} <span style="color:var(--faint)">(${ms || '<1'}ms) · data updated ${GENERATED_AT.slice(0, 10)}</span></div>${sortSel}</div>
+<h2 class="vh">Results</h2>
 <div class="rows">${results.map(row).join('')}</div>
 ${results.length === 0 ? '<p style="color:var(--muted);text-align:center;margin:40px 0">No results. Try a different search or clear filters.</p>' : ''}
 ${pager(base, q.page, pages)}

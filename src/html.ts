@@ -127,7 +127,8 @@ h1.page{font-size:clamp(22px,4vw,30px);font-weight:800;letter-spacing:-.025em}
 .pager a:hover{border-color:var(--border2);text-decoration:none;color:var(--text)}
 /* detail */
 .crumbs{color:var(--faint);font-size:13px;padding-top:20px;overflow-wrap:anywhere}
-.crumbs a{color:var(--muted)}
+.crumbs a{color:var(--muted);text-decoration:underline;text-decoration-color:var(--border2);text-underline-offset:3px}
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .detail{display:grid;grid-template-columns:1fr 290px;gap:32px;align-items:start;margin-top:20px}
 .detail-head{display:flex;gap:18px;align-items:flex-start}
 .detail-head .avatar{width:60px;height:60px;border-radius:15px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;color:#0b0b12}
