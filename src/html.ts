@@ -183,6 +183,7 @@ nav.top{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
 nav.top a{padding:5px 6px;font-size:12.5px}
 .toolbar{justify-content:flex-start}
 .searchbar{flex-direction:column}
+kbd.hint{display:none}
 .searchbar .btn{width:100%}
 .grid{grid-template-columns:1fr}
 .row{padding:14px}
