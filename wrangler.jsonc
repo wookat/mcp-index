@@ -6,6 +6,9 @@
   "routes": [
     { "pattern": "mcp.zalize.com", "custom_domain": true }
   ],
+  "rules": [
+    { "type": "Data", "globs": ["**/*.png"], "fallthrough": true }
+  ],
   "kv_namespaces": [
     { "binding": "METRICS", "id": "e7bd9f3b70774a06b54f9ced1026397f" }
   ],

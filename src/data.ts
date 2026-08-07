@@ -68,6 +68,7 @@ export interface Query {
   lang?: string;
   activity?: string;
   install?: string;
+  official?: string;
   sort?: string;
   page: number;
 }
@@ -79,6 +80,7 @@ export function search(query: Query, perPage = 48): { results: Item[]; total: nu
   if (query.lang) list = list.filter((i) => (i.language || '').toLowerCase() === query.lang!.toLowerCase());
   if (query.activity) list = list.filter((i) => i.activity === query.activity);
   if (query.install) list = list.filter((i) => i.install === query.install);
+  if (query.official) list = list.filter((i) => i.official);
   if (query.q) {
     const q = query.q.toLowerCase().trim();
     const terms = q.split(/\s+/).filter(Boolean);
