@@ -73,6 +73,46 @@ export interface Query {
   page: number;
 }
 
+const SYNONYMS: Record<string, string[]> = {
+  k8s: ['kubernetes'], kubernetes: ['k8s'],
+  postgres: ['postgresql'], postgresql: ['postgres'],
+  db: ['database'], database: ['db'],
+  js: ['javascript'], javascript: ['js'],
+  ts: ['typescript'], typescript: ['ts'],
+  gcal: ['google calendar'],
+  s3: ['aws s3'],
+  scraping: ['scraper', 'crawler'], scraper: ['scraping'], crawler: ['crawling', 'scraping'],
+};
+
+/** Lowercase, treat -/_/. as spaces, and drop a trailing plural "s" from each word. */
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[-_./]+/g, ' ')
+    .replace(/\b([a-z]{4,})s\b/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function itemHaystack(i: Item): { norm: string; squashed: string } {
+  const raw = `${i.name} ${i.repo} ${i.description} ${i.category} ${i.topics.join(' ')}`;
+  const norm = normalize(raw);
+  return { norm, squashed: norm.replace(/ /g, '') };
+}
+
+function termMatches(hay: { norm: string; squashed: string }, term: string): boolean {
+  const t = normalize(term);
+  if (!t) return true;
+  if (hay.norm.includes(t) || hay.squashed.includes(t.replace(/ /g, ''))) return true;
+  return (SYNONYMS[t] || []).map(normalize).some((syn) => hay.norm.includes(syn) || hay.squashed.includes(syn.replace(/ /g, '')));
+}
+
+export function matchesText(i: Item, q?: string): boolean {
+  if (!q) return true;
+  const hay = itemHaystack(i);
+  return q.toLowerCase().trim().split(/\s+/).filter(Boolean).every((t) => termMatches(hay, t));
+}
+
 export function search(query: Query, perPage = 48): { results: Item[]; total: number; pages: number } {
   let list = ITEMS;
   if (query.type) list = list.filter((i) => i.type === query.type);
@@ -86,11 +126,12 @@ export function search(query: Query, perPage = 48): { results: Item[]; total: nu
     const terms = q.split(/\s+/).filter(Boolean);
     list = list
       .map((i) => {
-        const hay = `${i.name} ${i.repo} ${i.description} ${i.category} ${i.topics.join(' ')}`.toLowerCase();
+        const hay = itemHaystack(i);
+        const name = normalize(i.name);
         let score = 0;
         for (const t of terms) {
-          if (!hay.includes(t)) return null;
-          score += i.name.toLowerCase().includes(t) ? 3 : 1;
+          if (!termMatches(hay, t)) return null;
+          score += name.includes(normalize(t)) ? 3 : 1;
         }
         return { i, score };
       })

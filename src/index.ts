@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { ITEMS, BY_SLUG, CATEGORIES, STATS, GENERATED_AT, catSlug, search, Query, Item } from './data';
+import { ITEMS, BY_SLUG, CATEGORIES, STATS, GENERATED_AT, catSlug, search, matchesText, Query, Item } from './data';
 import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, grade, ACTIVITY_LABEL, SITE } from './html';
 import OG_IMAGE from './og.png';
 
@@ -33,13 +33,6 @@ const LANGS = (() => {
   for (const i of ITEMS) if (i.language) m.set(i.language, (m.get(i.language) || 0) + 1);
   return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([l]) => l);
 })();
-
-function matchesText(i: Item, q?: string): boolean {
-  if (!q) return true;
-  const terms = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  const hay = `${i.name} ${i.repo} ${i.description} ${i.category} ${i.topics.join(' ')}`.toLowerCase();
-  return terms.every((t) => hay.includes(t));
-}
 
 /** Items matching every dimension of q except the excluded one (for facet counts). */
 function baseFor(q: Query, except: string): Item[] {

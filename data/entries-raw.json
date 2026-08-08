@@ -48714,6 +48714,24 @@
   "source": "punkpeye/awesome-mcp-servers"
  },
  {
+  "slug": "fronesis-labs-dcl-webhook",
+  "type": "server",
+  "name": "Fronesis-Labs/dcl-webhook",
+  "repo": "Fronesis-Labs/dcl-webhook",
+  "url": "https://github.com/Fronesis-Labs/dcl-webhook",
+  "subpath": null,
+  "category": "Security",
+  "description": "Deterministic AI audit layer: evaluates LLM/agent outputs against configurable policies (jailbreak, safety, quality, wallet, trade, MEV compliance) and writes every verdict to a tamper-evident SHA-256 hash chain — metadata only, never raw content. 17 tools including a full crypto-trading compliance suite. Pay-per-call via x402 (USDC on Base), from $0.01. `mcp.fronesislabs.com/mcp`",
+  "official": false,
+  "languagesHint": [
+   "Python"
+  ],
+  "scopes": [
+   "cloud"
+  ],
+  "source": "punkpeye/awesome-mcp-servers"
+ },
+ {
   "slug": "hernaninverso-eleion-scanner-mcp",
   "type": "server",
   "name": "hernaninverso/eleion-scanner-mcp",
@@ -74337,6 +74355,34 @@
   "source": "VoltAgent/awesome-agent-skills"
  },
  {
+  "slug": "bomx-distribb-skill",
+  "type": "skill",
+  "name": "Bomx/distribb-skill",
+  "repo": "Bomx/distribb-skill",
+  "url": "https://github.com/Bomx/distribb-skill",
+  "subpath": null,
+  "category": "Marketing",
+  "description": "SEO articles, keyword research, CMS publishing, high-DR backlink exchange",
+  "official": false,
+  "languagesHint": [],
+  "scopes": [],
+  "source": "VoltAgent/awesome-agent-skills"
+ },
+ {
+  "slug": "aidevgtm-gtm-cofounder",
+  "type": "skill",
+  "name": "AIDevGTM/gtm-cofounder",
+  "repo": "AIDevGTM/gtm-cofounder",
+  "url": "https://github.com/AIDevGTM/gtm-cofounder",
+  "subpath": null,
+  "category": "Marketing",
+  "description": "18 go-to-market skills for solo technical founders: positioning, first users, launch, pricing, and founder-led sales; grounded in Adam Frankl and Jakub Czakon",
+  "official": false,
+  "languagesHint": [],
+  "scopes": [],
+  "source": "VoltAgent/awesome-agent-skills"
+ },
+ {
   "slug": "pspdfkit-labs-nutrient-agent-skill",
   "type": "skill",
   "name": "PSPDFKit-labs/nutrient-agent-skill",
@@ -75667,6 +75713,34 @@
   "source": "VoltAgent/awesome-agent-skills"
  },
  {
+  "slug": "browser-act-browser-act-browser-act",
+  "type": "skill",
+  "name": "browser-act/browser-act",
+  "repo": "browser-act/skills",
+  "url": "https://github.com/browser-act/skills/tree/main/browser-act",
+  "subpath": "browser-act",
+  "category": "Development and Testing",
+  "description": "Automate authenticated browsers with extraction and human handoff",
+  "official": false,
+  "languagesHint": [],
+  "scopes": [],
+  "source": "VoltAgent/awesome-agent-skills"
+ },
+ {
+  "slug": "jasoncolapietro-suede-creator-skills",
+  "type": "skill",
+  "name": "JasonColapietro/suede-creator-skills",
+  "repo": "JasonColapietro/suede-creator-skills",
+  "url": "https://github.com/JasonColapietro/suede-creator-skills",
+  "subpath": null,
+  "category": "Development and Testing",
+  "description": "Agent orchestration, code review grading, AI eval, creator tooling skills.",
+  "official": false,
+  "languagesHint": [],
+  "scopes": [],
+  "source": "VoltAgent/awesome-agent-skills"
+ },
+ {
   "slug": "muratcankoylan-muratcankoylan-context-fundamentals",
   "type": "skill",
   "name": "muratcankoylan/context-fundamentals",
@@ -75849,6 +75923,20 @@
   "source": "VoltAgent/awesome-agent-skills"
  },
  {
+  "slug": "ohad6k-emulo-2",
+  "type": "skill",
+  "name": "ohad6k/emulo",
+  "repo": "ohad6k/emulo",
+  "url": "https://github.com/ohad6k/emulo",
+  "subpath": null,
+  "category": "Context Engineering",
+  "description": "Mines AI coding logs into personal agent profiles",
+  "official": false,
+  "languagesHint": [],
+  "scopes": [],
+  "source": "VoltAgent/awesome-agent-skills"
+ },
+ {
   "slug": "tubo2333-obsidian-knowledge-brain",
   "type": "skill",
   "name": "Tubo2333/obsidian-knowledge-brain",
@@ -75857,6 +75945,20 @@
   "subpath": null,
   "category": "Context Engineering",
   "description": "Cross-session knowledge memory and rule evolution for AI coding agents",
+  "official": false,
+  "languagesHint": [],
+  "scopes": [],
+  "source": "VoltAgent/awesome-agent-skills"
+ },
+ {
+  "slug": "oliver-zehentleitner-keep-the-why",
+  "type": "skill",
+  "name": "oliver-zehentleitner/keep-the-why",
+  "repo": "oliver-zehentleitner/keep-the-why",
+  "url": "https://github.com/oliver-zehentleitner/keep-the-why",
+  "subpath": null,
+  "category": "Context Engineering",
+  "description": "Preserves the reasoning behind a codebase — decisions, workarounds, rejected alternatives",
   "official": false,
   "languagesHint": [],
   "scopes": [],
@@ -76291,6 +76393,20 @@
   "subpath": null,
   "category": "Specialized Domains",
   "description": "Rewrites a rough idea or shot script into text-to-video prompts",
+  "official": false,
+  "languagesHint": [],
+  "scopes": [],
+  "source": "VoltAgent/awesome-agent-skills"
+ },
+ {
+  "slug": "orkas-ai-orkas-ai-video-router",
+  "type": "skill",
+  "name": "Orkas-AI/video-router",
+  "repo": "Orkas-AI/Orkas-VideoStudio",
+  "url": "https://github.com/Orkas-AI/Orkas-VideoStudio/tree/main/packages/skills/video-router",
+  "subpath": "packages/skills/video-router",
+  "category": "Specialized Domains",
+  "description": "Route video requests through deterministic agent production stages",
   "official": false,
   "languagesHint": [],
   "scopes": [],
