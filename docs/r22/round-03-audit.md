@@ -30,3 +30,10 @@
 本轮聚焦性能，实测未发现新的 P0/P1；C1–C3 均为「值得做但不紧急」的边际项，修改员可按成本自行合并处理或说明不修理由。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 03 verdict（2026-08-14 线上复验）
+- C1 PASS：/ 响应 `cache-control: public, max-age=300`；/api/stats 无缓存头。
+- C2 PASS：5000 字符 q 线上 0.22s（原 0.99s），正常搜索不受影响。
+- C3 PASS：bundle 3002KB/664KB gzip（fix 报告实测），字段剔除后 typecheck 通过、线上功能正常。
+- C4 PASS（按审查意见记录在案不修）。
+4/4 PASS，无 FAIL 项进入下一轮。
