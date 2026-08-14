@@ -52,3 +52,14 @@
 - 建议修改员将 D1/D3/D7 合并成一组 640px 媒体查询调整；D5 用"仅第一行 sticky"的纯 CSS 方案；D4/D6 可思辨后决定修或缓。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 04 verdict（2026-08-14 线上复验，375px 真浏览器实测）
+- D1 PASS：nav.top a 39.6px、facet a 39.6px（原 30/28.9）；Copy 按钮 34px（原 26，已达 WCAG 2.5.8 且明显改善，接受）。
+- D2 PASS：.cols gap 实测 14px（原 28px），空白带消除。
+- D3 PASS：搜索 input 字号实测 16px。
+- D4 PASS：全站无 onchange；sort 改为 Quality/Stars/Updated 纯链接；?sort=stars&lang=Python 下 facet 链接均保留 sort+lang。采纳"链接替代 select"治本方案，好评。
+- D5 PASS：header top:-59px；滚动后搜索行滚出（input top -50px），logo+nav 行保持 sticky，纯 CSS 实现。
+- D6 PASS：移动端首页 h2 顺序实测 Browse by category(785) < Top rated(3049)，桌面不受影响。
+- D7 PASS：nav 字号实测 13.5px。
+- 回归：320/375 横向溢出仍为 0；Copy 交互正常。
+7/7 PASS，无 FAIL 项进入下一轮。
