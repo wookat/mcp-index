@@ -83,7 +83,7 @@ function facetSidebar(q: Query, action: string): string {
     const href = base + (qs.toString() ? '?' + qs.toString() : '');
     return `<a href="${esc(href)}"${on ? ' class="on" aria-current="true"' : ''}>${esc(label)}<span>${count.toLocaleString()}</span></a>`;
   };
-  const facet = (title: string, dim: keyof Query, opts: [string, string][], cur?: string) => {
+  const facet = (title: string, dim: keyof Query, opts: [string, string][], cur?: string, max?: number) => {
     const base = baseFor(q, dim as string);
     const get = FILTER_DIMS.find((d) => d.key === dim)!.get;
     const counts = new Map<string, number>();
@@ -91,16 +91,22 @@ function facetSidebar(q: Query, action: string): string {
       const key = get(i).toLowerCase();
       counts.set(key, (counts.get(key) || 0) + 1);
     }
-    const rows = opts
+    let rows = opts
       .map(([v, l]) => ({ v, l, n: counts.get(v.toLowerCase()) || 0 }))
       .filter((r) => r.n > 0 || r.v === cur);
+    // Row order must match the displayed (context-dependent) counts; activity
+    // keeps its lifecycle order (active → archived) as deliberate semantics.
+    if (dim !== 'activity') rows.sort((a, b) => b.n - a.n);
+    // Cap after context counting so locally-relevant rows aren't hidden by
+    // global rank; the selected row always stays visible.
+    if (max) rows = rows.slice(0, max).concat(rows.slice(max).filter((r) => r.v === cur));
     if (!rows.length) return '';
     return `<div class="facet"><div class="fh">${esc(title)}</div>${rows.map((r) => link(dim, r.v, r.l, r.n, r.v === cur)).join('')}</div>`;
   };
   const inner = `
 ${action === '/search' ? facet('Type', 'type', [['server', 'MCP Servers'], ['skill', 'Agent Skills']], q.type) : ''}
 ${facet('Status', 'official', [['yes', 'Official']], q.official)}
-${facet('Category', 'category', TOPIC_CATEGORIES.slice(0, 24).map((c) => [c.slug, c.name] as [string, string]), q.category)}
+${facet('Category', 'category', TOPIC_CATEGORIES.map((c) => [c.slug, c.name] as [string, string]), q.category, 24)}
 ${facet('Language', 'lang', LANGS.map((l) => [l, l] as [string, string]), q.lang)}
 ${facet('Activity', 'activity', Object.entries(ACTIVITY_LABEL).filter(([k]) => k !== 'unknown') as [string, string][], q.activity)}
 ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, string][], q.install)}`;
@@ -243,7 +249,8 @@ app.get('/categories', (c) => {
   const grid = (cats: typeof CATEGORIES) => `<div class="catgrid">${cats.map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>`;
   const body = `<main id="main" class="wrap">
 <div class="crumbs"><a href="/">Home</a> › Categories</div>
-<div class="section" style="margin-top:14px"><h1 class="page">All categories</h1>
+<div class="section" style="margin-top:14px"><h1 class="page">All categories</h1></div>
+<div class="section"><h2>Topic categories</h2>
 <p class="sub" style="color:var(--muted);margin-top:4px">${TOPIC_CATEGORIES.length} topic categories across ${STATS.total.toLocaleString()} entries, sorted by size.</p>
 ${grid(TOPIC_CATEGORIES)}
 </div>
