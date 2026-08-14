@@ -1,0 +1,13 @@
+{
+  "starsMax": 40,
+  "starsLogFactor": 10,
+  "activity": { "active": 25, "maintained": 18, "stale": 8, "inactive": 0, "archived": 0 },
+  "license": 10,
+  "official": 10,
+  "notArchived": 5,
+  "description": 5,
+  "descriptionMinLength": 30,
+  "topics": 5,
+  "topicsMin": 3,
+  "cap": 100
+}

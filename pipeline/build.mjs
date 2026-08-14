@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const DATA = join(ROOT, '..', 'data');
 
+// Shared with the worker's score-breakdown UI (src/index.ts) — single source of truth for weights.
+const SCORING = JSON.parse(readFileSync(join(ROOT, '..', 'src', 'scoring.json'), 'utf8'));
+
 const entries = JSON.parse(readFileSync(join(DATA, 'entries-raw.json'), 'utf8'));
 const meta = JSON.parse(readFileSync(join(DATA, 'repo-meta.json'), 'utf8'));
 const NOW = Date.now();
@@ -40,15 +43,14 @@ function activity(m) {
 function qualityScore(e, m) {
   if (!m || m.missing) return 0;
   let s = 0;
-  s += Math.min(40, Math.round(Math.log10((m.stars || 0) + 1) * 10)); // 0-40
-  const act = activity(m);
-  s += { active: 25, maintained: 18, stale: 8, inactive: 0, archived: 0 }[act] ?? 0;
-  if (m.license) s += 10;
-  if (!m.archived) s += 5;
-  if (e.official) s += 10;
-  if ((m.description || e.description || '').length > 30) s += 5;
-  if ((m.topics || []).length >= 3) s += 5;
-  return Math.min(100, s);
+  s += Math.min(SCORING.starsMax, Math.round(Math.log10((m.stars || 0) + 1) * SCORING.starsLogFactor));
+  s += SCORING.activity[activity(m)] ?? 0;
+  if (m.license) s += SCORING.license;
+  if (!m.archived) s += SCORING.notArchived;
+  if (e.official) s += SCORING.official;
+  if ((m.description || e.description || '').length > SCORING.descriptionMinLength) s += SCORING.description;
+  if ((m.topics || []).length >= SCORING.topicsMin) s += SCORING.topics;
+  return Math.min(SCORING.cap, s);
 }
 
 const out = [];
@@ -85,6 +87,14 @@ out.sort((a, b) => b.score - a.score || b.stars - a.stars);
 // The dataset is inlined into the worker bundle (free-plan gzip limit 3MB);
 // warn well before the entry count pushes the bundle toward that ceiling.
 if (out.length > 15000) console.warn(`WARNING: ${out.length} entries — bundle size approaching worker limits, consider splitting dataset out of the bundle`);
+// Distinct category names must slugify uniquely: the worker keys categories by
+// slug and would silently merge colliding names under the first one seen.
+const slugOf = new Map();
+for (const name of new Set(out.map((x) => x.category))) {
+  const s = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (slugOf.has(s)) console.warn(`WARNING: category slug conflict — "${slugOf.get(s)}" and "${name}" both map to "${s}"`);
+  else slugOf.set(s, name);
+}
 writeFileSync(join(DATA, 'index.json'), JSON.stringify({ generatedAt: new Date().toISOString(), count: out.length, items: out }));
 const stats = {
   total: out.length,
