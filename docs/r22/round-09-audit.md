@@ -36,3 +36,10 @@
 - 全站无障碍基线已相当好（axe 近零违规），本轮四项均为语义/键盘层小补强，合计改动 <30 行，可一个 PR 完成。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 09 verdict（2026-08-14 线上复验）
+- I1 PASS：全页含 `<a class="skip" href="#main">` 与 `<main id="main">`（含 404 页实测）。
+- I2 PASS：首页 hero 已为 `<section aria-label="Introduction">`；axe 复扫 5 页全部零违规（region 违规消失）。
+- I3 PASS：copy 按钮已带 aria-live="polite"。
+- I4 PASS：选中 facet 实测含 aria-current="true"（/servers?official=yes 的 Official）。
+4/4 PASS，无 FAIL 项进入下一轮。
