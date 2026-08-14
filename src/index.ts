@@ -105,6 +105,7 @@ ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, s
 function listPage(c: Context<{ Bindings: Env }>, q: Query, opts: { path: string; title: string; h1: string; desc: string; action: string; parent?: { href: string; label: string } }) {
   const t0 = Date.now();
   const { results, total, pages } = search(q);
+  const page = Math.min(Math.max(1, q.page), pages);
   const ms = Date.now() - t0;
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(q)) if (v && k !== 'page' && !(k === 'type' && opts.action !== '/search') && !(k === 'category' && opts.action.startsWith('/category/'))) qs.set(k, String(v));
@@ -129,7 +130,7 @@ ${facetSidebar(q, opts.action)}
 <h2 class="vh">Results</h2>
 <div class="rows">${results.map(row).join('')}</div>
 ${results.length === 0 ? '<p style="color:var(--muted);text-align:center;margin:40px 0">No results. Try a different search or clear filters.</p>' : ''}
-${pager(base, q.page, pages)}
+${pager(base, page, pages)}
 </div>
 </div>
 </main>`;
@@ -137,10 +138,12 @@ ${pager(base, q.page, pages)}
     '@context': 'https://schema.org', '@type': 'ItemList',
     name: opts.h1, numberOfItems: total,
     itemListElement: results.slice(0, 10).map((i, n) => ({
-      '@type': 'ListItem', position: (q.page - 1) * 48 + n + 1, name: i.name, url: `${SITE}/s/${i.slug}`,
+      '@type': 'ListItem', position: (page - 1) * 48 + n + 1, name: i.name, url: `${SITE}/s/${i.slug}`,
     })),
   });
-  return c.html(layout({ title: opts.title, desc: opts.desc, path: opts.path, body, jsonld }));
+  // Paginated pages self-canonicalize (?page=N only; filter params still
+  // converge on the clean path so facets don't open an infinite crawl space).
+  return c.html(layout({ title: opts.title, desc: opts.desc, path: opts.path + (page > 1 ? `?page=${page}` : ''), body, jsonld }));
 }
 
 app.get('/', (c) => {
@@ -386,7 +389,9 @@ ${related.length ? `<div class="section"><h2>Related in ${esc(i.category)}</h2><
     name: i.name, description: i.description, url: `${SITE}/s/${i.slug}`,
     applicationCategory: 'DeveloperApplication', operatingSystem: 'Cross-platform',
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-    aggregateRating: i.stars > 5 ? { '@type': 'AggregateRating', ratingValue: Math.max(1, Math.min(5, i.score / 20)).toFixed(1), ratingCount: i.stars } : undefined,
+    // Stars are endorsements, not user reviews — expressing them as a rating
+    // would violate Google's review-snippet policy.
+    interactionStatistic: { '@type': 'InteractionCounter', interactionType: { '@type': 'LikeAction' }, userInteractionCount: i.stars },
     sameAs: [`https://github.com/${i.repo}`],
   });
   return c.html(layout({
@@ -464,7 +469,7 @@ app.get('/favicon.ico', (c) => c.body(
   { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=604800' },
 ));
 
-app.get('/robots.txt', (c) => c.text(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${SITE}/sitemap.xml\n`));
+app.get('/robots.txt', (c) => c.text(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /search\nSitemap: ${SITE}/sitemap.xml\n`));
 
 app.get(`/${INDEXNOW_KEY}.txt`, (c) => c.text(INDEXNOW_KEY));
 
@@ -472,12 +477,15 @@ app.get(`/${INDEXNOW_KEY}.txt`, (c) => c.text(INDEXNOW_KEY));
 let sitemapXml: string | undefined;
 app.get('/sitemap.xml', (c) => {
   if (!sitemapXml) {
-    const urls: string[] = ['/', '/servers', '/skills', '/categories', '/about',
-      ...CATEGORIES.map((cat) => `/category/${cat.slug}`),
-      ...ITEMS.map((i) => `/s/${i.slug}`)];
-    const lastmod = GENERATED_AT.slice(0, 10);
+    // List pages change with each weekly refresh; entry pages change when the
+    // underlying repo does, so their lastmod uses the repo's pushedAt.
+    const refreshed = GENERATED_AT.slice(0, 10);
+    const urls: [string, string][] = [
+      ...['/', '/servers', '/skills', '/categories', '/about'].map((u) => [u, refreshed] as [string, string]),
+      ...CATEGORIES.map((cat) => [`/category/${cat.slug}`, refreshed] as [string, string]),
+      ...ITEMS.map((i) => [`/s/${i.slug}`, i.pushedAt.slice(0, 10)] as [string, string])];
     sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-      .map((u) => `<url><loc>${SITE}${u}</loc><lastmod>${lastmod}</lastmod></url>`)
+      .map(([u, lastmod]) => `<url><loc>${SITE}${u}</loc><lastmod>${lastmod}</lastmod></url>`)
       .join('\n')}\n</urlset>`;
   }
   return c.body(sitemapXml, 200, { 'Content-Type': 'application/xml' });
