@@ -28,3 +28,11 @@
 - 建议：listPage 构造 qs 时跳过与路由隐含值相同的 type。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 02 verdict（2026-08-14 线上复验，全部实测）
+- B1 PASS：/category/databases?lang=Python 侧栏 Category 链接为 /category/developer-tools?lang=Python 等路径形式（参数保留），点击生效。
+- B2 PASS：q=postgres 前 4 = crystaldba/postgres-mcp、javimaligno/postgres-mcp、postgres-aiops、官方 server-postgres；q=notion 第 1 = makenotion/notion-mcp-server。
+- B3 PASS：数据集 total 4209（+8 vendor seeds），makenotion/notion-mcp-server 可检索；驳回 registry 全量接入的理由有实测数据支撑，采纳种子清单方案合理。
+- B4 PASS：/servers 排序表单含 noscript Apply 按钮。
+- B5 PASS：/servers?page=2 pager 链接无冗余 type 参数。
+5/5 PASS，无 FAIL 项进入下一轮。
