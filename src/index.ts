@@ -22,7 +22,7 @@ function parseQuery(c: { req: { query: (k: string) => string | undefined } }): Q
     lang: c.req.query('lang') || undefined,
     activity: c.req.query('activity') || undefined,
     install: c.req.query('install') || undefined,
-    official: c.req.query('official') || undefined,
+    official: c.req.query('official') === 'yes' ? 'yes' : undefined,
     sort: c.req.query('sort') || undefined,
     page: parseInt(c.req.query('page') || '1', 10) || 1,
   };
@@ -125,12 +125,16 @@ ${pager(base, q.page, pages)}
 }
 
 app.get('/', (c) => {
-  const top = ITEMS.slice(0, 12);
+  const top = ITEMS.filter((i) => !i.official).slice(0, 12);
   const official = ITEMS.filter((i) => i.official).slice(0, 6);
+  const dataAgeDays = Math.floor((Date.now() - new Date(GENERATED_AT).getTime()) / 86400000);
+  const eyebrow = dataAgeDays > 10
+    ? `<div class="eyebrow"><span class="pulse warn"></span>Data refresh overdue · last update ${GENERATED_AT.slice(0, 10)}</div>`
+    : `<div class="eyebrow"><span class="pulse"></span>Refreshed weekly · last update ${GENERATED_AT.slice(0, 10)}</div>`;
   const recent = [...ITEMS].sort((a, b) => b.pushedAt.localeCompare(a.pushedAt)).slice(0, 6);
   const body = `
 <div class="hero"><div class="wrap">
-<div class="eyebrow"><span class="pulse"></span>Refreshed weekly · last update ${GENERATED_AT.slice(0, 10)}</div>
+${eyebrow}
 <h1>Find the right <span class="grad">MCP server</span><br>and <span class="grad">agent skill</span>, fast</h1>
 <p class="sub">A structured, quality-scored directory of ${STATS.servers.toLocaleString()} Model Context Protocol servers and ${STATS.skills.toLocaleString()} agent skills — with maintenance signals, install methods and stars.</p>
 <form method="get" action="/search"><div class="searchbar"><input type="search" name="q" placeholder="Try: postgres, browser automation, stripe…" autofocus><kbd class="hint" aria-hidden="true">/</kbd><button class="btn" type="submit">Search</button></div></form>
@@ -144,7 +148,7 @@ app.get('/', (c) => {
 <main class="wrap">
 <div class="section">
 <div class="section-head"><div><h2>Top rated</h2>
-<p class="sub">Highest quality score: stars × maintenance activity × license × docs signals.</p></div>
+<p class="sub">Highest-scored community projects — stars × maintenance activity × license × docs signals.</p></div>
 <span class="more"><a href="/servers">All servers →</a> · <a href="/skills">All skills →</a></span></div>
 <div class="grid">${top.map(card).join('')}</div>
 </div>
@@ -228,7 +232,7 @@ app.get('/category/:slug', (c) => {
 });
 
 function installSnippet(i: Item): { label: string; code: string } | null {
-  const pkgGuess = i.repo.split('/')[1];
+  const pkgGuess = (i.subpath ? i.subpath.split('/').filter(Boolean).pop() : '') || i.repo.split('/')[1];
   if (i.type === 'skill') {
     return {
       label: 'Install this skill (Claude Code)',
@@ -451,15 +455,17 @@ app.post('/api/track', async (c) => {
 });
 
 app.get('/api/stats', async (c) => {
+  const EVENTS = ['pageview', 'copy_install', 'repo_click', 'github_click'];
+  const days = Array.from({ length: 14 }, (_, d) => new Date(Date.now() - d * 86400000).toISOString().slice(0, 10));
+  const values = await Promise.all(days.flatMap((day) => EVENTS.map((ev) => c.env.METRICS.get(`m:${day}:${ev}`))));
   const out: Record<string, Record<string, number>> = {};
-  for (let d = 0; d < 14; d++) {
-    const day = new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+  days.forEach((day, di) => {
     out[day] = {};
-    for (const ev of ['pageview', 'copy_install', 'repo_click', 'github_click']) {
-      const v = await c.env.METRICS.get(`m:${day}:${ev}`);
+    EVENTS.forEach((ev, ei) => {
+      const v = values[di * EVENTS.length + ei];
       if (v) out[day][ev] = parseInt(v, 10);
-    }
-  }
+    });
+  });
   return c.json({ dataset: { generatedAt: GENERATED_AT, ...STATS }, metrics: out });
 });
 

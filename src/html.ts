@@ -38,6 +38,7 @@ nav.top a[aria-current]{color:var(--text)}
 .hero{padding:72px 0 40px;text-align:center;background:radial-gradient(ellipse 60% 55% at 50% -12%,rgba(139,147,255,.16),transparent),radial-gradient(ellipse 40% 40% at 80% 0%,rgba(177,140,255,.07),transparent)}
 .hero .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:5px 14px;margin-bottom:22px}
 .hero .eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
+.hero .eyebrow .pulse.warn{background:var(--orange);box-shadow:0 0 0 3px rgba(251,146,60,.18)}
 .hero h1{font-size:clamp(30px,5.6vw,52px);font-weight:800;letter-spacing:-.035em;line-height:1.08}
 .hero h1 .grad{background:linear-gradient(90deg,var(--accent),#c4a5ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p.sub{color:var(--muted);font-size:clamp(15px,2.4vw,17.5px);max-width:600px;margin:16px auto 0}
@@ -178,7 +179,7 @@ aside.detail-side{position:static}
 @media(max-width:640px){
 body{overflow-x:hidden}
 header.site .wrap{gap:6px 10px;flex-wrap:wrap;height:auto;padding-top:9px;padding-bottom:9px}
-.hsearch{display:none}
+.hsearch{order:10;flex-basis:100%;max-width:none}
 nav.top{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
 nav.top a{padding:5px 6px;font-size:12.5px}
 .toolbar{justify-content:flex-start}
@@ -193,13 +194,13 @@ kbd.hint{display:none}
 `;
 
 const CLIENT_JS = `
-function track(ev,label){try{navigator.sendBeacon('/api/track',JSON.stringify({ev:ev,label:label||''}))}catch(e){}}
-track('pageview',location.pathname);
+function track(ev){try{navigator.sendBeacon('/api/track',JSON.stringify({ev:ev}))}catch(e){}}
+track('pageview');
 document.addEventListener('click',function(e){
   var b=e.target.closest('.copybtn');
-  if(b){var code=b.parentElement.querySelector('code');navigator.clipboard.writeText(code.innerText).then(function(){b.textContent='Copied!';setTimeout(function(){b.textContent='Copy'},1500)});track('copy_install',location.pathname);}
+  if(b){var code=b.parentElement.querySelector('code');navigator.clipboard.writeText(code.innerText).then(function(){b.textContent='Copied!';setTimeout(function(){b.textContent='Copy'},1500)});track('copy_install');}
   var g=e.target.closest('a[data-track]');
-  if(g){track(g.getAttribute('data-track'),location.pathname)}
+  if(g){track(g.getAttribute('data-track'))}
 });
 document.addEventListener('keydown',function(e){
   var focusSearch=(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))||((e.ctrlKey||e.metaKey)&&e.key==='k');
@@ -271,8 +272,10 @@ export function starFmt(n: number): string {
   return n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
 }
 
+/** Relative to the dataset snapshot (GENERATED_AT), not the request time, so
+ * "Updated Xd ago" stays truthful however long ago the data was refreshed. */
 export function daysAgo(iso: string): string {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  const d = Math.floor((new Date(GENERATED_AT).getTime() - new Date(iso).getTime()) / 86400000);
   if (d <= 0) return 'today';
   if (d === 1) return 'yesterday';
   if (d < 30) return `${d}d ago`;
