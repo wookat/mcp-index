@@ -6,6 +6,13 @@ export function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// JSON embedded in a <script> block: the HTML parser closes the block at the
+// first "</script>" regardless of JSON string context, so <, > and & must be
+// JSON-unicode-escaped (semantically identical for structured-data parsers).
+function scriptSafe(json: string): string {
+  return json.replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+}
+
 const CSS = `
 :root{
 --bg:#09090b;--bg2:#101014;--card:#121216;--card2:#18181d;--border:#26262c;--border2:#34343c;
@@ -250,7 +257,7 @@ export function layout(opts: { title: string; desc: string; path: string; body: 
 <meta name="twitter:image" content="${SITE}/og.png">
 <meta name="theme-color" content="#09090b">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%238b93ff'/><text x='50' y='68' font-size='52' text-anchor='middle' font-family='sans-serif' font-weight='bold' fill='%230b0b12'>M</text></svg>">
-${(Array.isArray(opts.jsonld) ? opts.jsonld : opts.jsonld ? [opts.jsonld] : []).map((j) => `<script type="application/ld+json">${j}</script>`).join('\n')}
+${(Array.isArray(opts.jsonld) ? opts.jsonld : opts.jsonld ? [opts.jsonld] : []).map((j) => `<script type="application/ld+json">${scriptSafe(j)}</script>`).join('\n')}
 <style>${CSS}</style>
 </head>
 <body>

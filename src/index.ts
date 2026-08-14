@@ -6,7 +6,7 @@ import OG_IMAGE from './og.png';
 
 const INDEXNOW_KEY = '8b38cfa490ebd06f8b4ec7290a002646';
 
-type Env = { METRICS: KVNamespace };
+type Env = { METRICS: KVNamespace; TRACK_RL: { limit(opts: { key: string }): Promise<{ success: boolean }> } };
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -17,10 +17,19 @@ app.use('*', async (c, next) => {
   // so shared/hand-typed links land on the canonical page instead of a 404.
   const u = new URL(c.req.url);
   let p = u.pathname;
+  // Collapse leading slashes: "//example.com" would otherwise become a
+  // protocol-relative redirect to an external site (open redirect).
+  p = p.replace(/^\/{2,}/, '/');
   if (p.length > 1 && p.endsWith('/')) p = p.replace(/\/+$/, '') || '/';
   if (/^\/s\//i.test(p)) p = p.toLowerCase();
   if (p !== u.pathname) return c.redirect(p + u.search, 301);
   await next();
+  c.res.headers.set('X-Content-Type-Options', 'nosniff');
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.res.headers.set('X-Frame-Options', 'DENY');
+  if (c.res.headers.get('Content-Type')?.includes('text/html')) {
+    c.res.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; base-uri 'self'; frame-ancestors 'none'");
+  }
   if ((c.req.method === 'GET' || c.req.method === 'HEAD') && !c.req.path.startsWith('/api/') && !c.res.headers.has('Cache-Control')) {
     c.res.headers.set('Cache-Control', 'public, max-age=300');
   }
@@ -495,6 +504,10 @@ app.get('/sitemap.xml', (c) => {
 // acceptable for anonymous usage metrics.
 app.post('/api/track', async (c) => {
   if (parseInt(c.req.header('content-length') || '0', 10) > 1024) return c.json({ ok: false }, 400);
+  // Per-IP rate limit via the native ratelimit binding (KV can't count
+  // sub-minute: edge read caching hides increments for up to 60s).
+  const ip = c.req.header('cf-connecting-ip');
+  if (ip && !(await c.env.TRACK_RL.limit({ key: ip })).success) return c.json({ ok: false }, 429);
   try {
     const { ev } = await c.req.json<{ ev: string }>();
     const allowed = ['pageview', 'copy_install', 'repo_click', 'github_click'];
@@ -519,6 +532,8 @@ app.get('/api/stats', async (c) => {
       if (v) out[day][ev] = parseInt(v, 10);
     });
   });
+  // Day-granular aggregates: a minute of edge caching absorbs KV read fan-out (56 reads/request).
+  c.header('Cache-Control', 'public, max-age=60');
   return c.json({ dataset: { generatedAt: GENERATED_AT, ...STATS }, metrics: out });
 });
 

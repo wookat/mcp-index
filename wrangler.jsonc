@@ -12,5 +12,10 @@
   "kv_namespaces": [
     { "binding": "METRICS", "id": "e7bd9f3b70774a06b54f9ced1026397f" }
   ],
+  "unsafe": {
+    "bindings": [
+      { "name": "TRACK_RL", "type": "ratelimit", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } }
+    ]
+  },
   "observability": { "enabled": true }
 }
