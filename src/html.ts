@@ -300,6 +300,15 @@ export const ACTIVITY_LABEL: Record<string, string> = {
   active: 'Active', maintained: 'Maintained', stale: 'Stale', inactive: 'Inactive', archived: 'Archived', unknown: 'Unknown',
 };
 
+export const ACTIVITY_TITLE: Record<string, string> = {
+  active: 'Last commit within 30 days',
+  maintained: 'Last commit 1\u20133 months ago',
+  stale: 'Last commit 3\u201312 months ago',
+  inactive: 'No commits for over a year',
+  archived: 'Repository archived by its owner',
+  unknown: 'Repository metadata unavailable',
+};
+
 const AVATAR_HUES = [232, 262, 200, 160, 24, 340, 48, 288, 184, 8];
 export function avatar(name: string, cls = 'avatar'): string {
   let h = 0;
@@ -317,7 +326,7 @@ export function grade(score: number): string {
 function badges(i: Item): string {
   return `<span class="badge type-${i.type}">${i.type === 'server' ? 'MCP Server' : 'Agent Skill'}</span>
 ${i.official ? '<span class="badge official">Official</span>' : ''}
-<span class="badge act-${i.activity}"><span class="dotb"></span>${ACTIVITY_LABEL[i.activity] || i.activity}</span>`;
+<span class="badge act-${i.activity}" title="${ACTIVITY_TITLE[i.activity] || ''}"><span class="dotb"></span>${ACTIVITY_LABEL[i.activity] || i.activity}</span>`;
 }
 
 export function row(i: Item): string {

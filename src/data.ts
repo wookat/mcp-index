@@ -51,6 +51,14 @@ export const CATEGORIES: { name: string; slug: string; count: number; type: stri
   return [...m.values()].sort((a, b) => b.count - a.count);
 })();
 
+// Source-list section names like "Skills by X" / "<Language> Skills" describe
+// who wrote a skill, not what it does — keep them out of the topic taxonomy.
+export function isCollection(name: string): boolean {
+  return /^skills by /i.test(name) || / skills$/i.test(name);
+}
+export const TOPIC_CATEGORIES = CATEGORIES.filter((c) => !isCollection(c.name));
+export const COLLECTIONS = CATEGORIES.filter((c) => isCollection(c.name));
+
 export const STATS = {
   total: ITEMS.length,
   servers: ITEMS.filter((i) => i.type === 'server').length,

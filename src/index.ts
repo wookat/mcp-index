@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { ITEMS, BY_SLUG, CATEGORIES, STATS, GENERATED_AT, catSlug, search, matchesText, Query, Item } from './data';
-import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, grade, ACTIVITY_LABEL, SITE } from './html';
+import { ITEMS, BY_SLUG, CATEGORIES, TOPIC_CATEGORIES, COLLECTIONS, STATS, GENERATED_AT, catSlug, search, matchesText, Query, Item } from './data';
+import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, grade, ACTIVITY_LABEL, ACTIVITY_TITLE, SITE } from './html';
 import OG_IMAGE from './og.png';
 
 const INDEXNOW_KEY = '8b38cfa490ebd06f8b4ec7290a002646';
@@ -96,7 +96,7 @@ function facetSidebar(q: Query, action: string): string {
   const inner = `
 ${action === '/search' ? facet('Type', 'type', [['server', 'MCP Servers'], ['skill', 'Agent Skills']], q.type) : ''}
 ${facet('Status', 'official', [['yes', 'Official']], q.official)}
-${facet('Category', 'category', CATEGORIES.slice(0, 24).map((c) => [c.slug, c.name] as [string, string]), q.category)}
+${facet('Category', 'category', TOPIC_CATEGORIES.slice(0, 24).map((c) => [c.slug, c.name] as [string, string]), q.category)}
 ${facet('Language', 'lang', LANGS.map((l) => [l, l] as [string, string]), q.lang)}
 ${facet('Activity', 'activity', Object.entries(ACTIVITY_LABEL).filter(([k]) => k !== 'unknown') as [string, string][], q.activity)}
 ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, string][], q.install)}`;
@@ -107,7 +107,7 @@ ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, s
 <details class="mfacets"><summary>Filters${nActive ? ` (${nActive} active)` : ''}</summary>${clear}${inner}</details>`;
 }
 
-function listPage(c: any, q: Query, opts: { path: string; title: string; h1: string; desc: string; action: string }) {
+function listPage(c: any, q: Query, opts: { path: string; title: string; h1: string; desc: string; action: string; parent?: { href: string; label: string } }) {
   const t0 = Date.now();
   const { results, total, pages } = search(q);
   const ms = Date.now() - t0;
@@ -123,7 +123,7 @@ function listPage(c: any, q: Query, opts: { path: string; title: string; h1: str
   };
   const sortSel = `<nav class="sortlinks" aria-label="Sort">Sort:${sortLink('', 'Quality')}${sortLink('stars', 'Stars')}${sortLink('updated', 'Updated')}</nav>`;
   const body = `<main class="wrap">
-<div class="crumbs"><a href="/">Home</a> › ${esc(opts.h1)}</div>
+<div class="crumbs"><a href="/">Home</a> › ${opts.parent ? `<a href="${opts.parent.href}">${esc(opts.parent.label)}</a> › ` : ''}${esc(opts.h1)}</div>
 <div style="margin-top:14px"><h1 class="page">${esc(opts.h1)}</h1>
 <p class="sub" style="color:var(--muted);font-size:14px;margin-top:4px">${esc(opts.desc)}.</p></div>
 <form method="get" action="${opts.action}" style="margin:16px 0 0"><div class="searchbar" style="margin:0;max-width:640px"><input type="search" name="q" placeholder="Search by name, description, topic…" value="${esc(q.q || '')}">${q.type && opts.action === '/search' ? `<input type="hidden" name="type" value="${esc(q.type)}">` : ''}<button class="btn" type="submit">Search</button></div></form>
@@ -188,7 +188,7 @@ ${eyebrow}
 </div>
 <div class="section cat-home">
 <div class="section-head"><div><h2>Browse by category</h2></div><span class="more"><a href="/categories">All ${STATS.categories} categories →</a></span></div>
-<div class="catgrid">${CATEGORIES.slice(0, 36).map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>
+<div class="catgrid">${TOPIC_CATEGORIES.slice(0, 36).map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>
 </div>
 </main>`;
   const jsonld = JSON.stringify({
@@ -196,7 +196,7 @@ ${eyebrow}
     potentialAction: { '@type': 'SearchAction', target: `${SITE}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' },
   });
   return c.html(layout({
-    title: `MCP Index — ${STATS.servers.toLocaleString()}+ MCP Servers & Agent Skills Directory`,
+    title: `MCP Index — ${STATS.servers.toLocaleString()} MCP Servers · ${STATS.skills.toLocaleString()} Agent Skills`,
     desc: `Searchable directory of ${STATS.servers.toLocaleString()} Model Context Protocol servers and ${STATS.skills.toLocaleString()} agent skills with quality scores, maintenance activity, stars and install methods. Updated weekly.`,
     path: '/', body, jsonld,
   }));
@@ -233,11 +233,16 @@ app.get('/skills', (c) => {
 });
 
 app.get('/categories', (c) => {
+  const grid = (cats: typeof CATEGORIES) => `<div class="catgrid">${cats.map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>`;
   const body = `<main class="wrap">
 <div class="crumbs"><a href="/">Home</a> › Categories</div>
 <div class="section" style="margin-top:14px"><h1 class="page">All categories</h1>
-<p class="sub" style="margin-top:4px">${STATS.categories} categories across ${STATS.total.toLocaleString()} entries.</p>
-<div class="catgrid">${CATEGORIES.map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>
+<p class="sub" style="color:var(--muted);margin-top:4px">${TOPIC_CATEGORIES.length} topic categories across ${STATS.total.toLocaleString()} entries, sorted by size.</p>
+${grid(TOPIC_CATEGORIES)}
+</div>
+<div class="section"><h2>Skill collections</h2>
+<p class="sub" style="color:var(--muted);margin-top:4px">Skills grouped by their author or source list rather than by topic.</p>
+${grid(COLLECTIONS)}
 </div></main>`;
   return c.html(layout({ title: 'All Categories — MCP Index', desc: `Browse ${STATS.categories} categories of MCP servers and agent skills.`, path: '/categories', body }));
 });
@@ -251,6 +256,7 @@ app.get('/category/:slug', (c) => {
     path: `/category/${slug}`, action: `/category/${slug}`,
     title: `${cat.name} — ${cat.count} MCP Servers & Skills — MCP Index`,
     h1: cat.name,
+    parent: { href: '/categories', label: 'Categories' },
     desc: `${cat.count} MCP servers and agent skills in the ${cat.name} category, ranked by quality score`,
   });
 });
@@ -331,7 +337,7 @@ ${avatar(i.name)}
 <div class="badges" style="margin-top:8px">
 <span class="badge type-${i.type}">${i.type === 'server' ? 'MCP Server' : 'Agent Skill'}</span>
 ${i.official ? '<span class="badge official">Official</span>' : ''}
-<span class="badge act-${i.activity}"><span class="dotb"></span>${ACTIVITY_LABEL[i.activity]}</span>
+<span class="badge act-${i.activity}" title="${ACTIVITY_TITLE[i.activity] || ''}"><span class="dotb"></span>${ACTIVITY_LABEL[i.activity]}</span>
 ${i.license ? `<span class="badge">${esc(i.license)}</span>` : ''}
 ${i.scopes.map((s) => `<span class="badge">${esc(s)}</span>`).join('')}
 </div>
@@ -405,6 +411,8 @@ app.get('/about', (c) => {
 <p style="color:var(--muted)">An agent skill is a folder with a SKILL.md file (instructions plus optional scripts) that AI coding agents like Claude Code, Codex CLI or Gemini CLI load on demand to perform a specialized task.</p>
 <h3 style="margin:16px 0 6px;font-size:15.5px">How is the quality score computed?</h3>
 <p style="color:var(--muted)">0–100, from: log-scaled GitHub stars (max 40), maintenance activity based on last commit (max 25), license present (10), official status (10), not archived (5), meaningful description (5), topics (5). Every entry's detail page shows its full per-component breakdown. It is a heuristic signal, not an endorsement.</p>
+<h3 style="margin:16px 0 6px;font-size:15.5px">What do the activity badges mean?</h3>
+<p style="color:var(--muted)">They reflect the repository's last commit at the time of the weekly refresh: <b>Active</b> — within 30 days; <b>Maintained</b> — 1–3 months; <b>Stale</b> — 3–12 months; <b>Inactive</b> — over a year; <b>Archived</b> — archived by its owner.</p>
 <h3 style="margin:16px 0 6px;font-size:15.5px">Where does the data come from?</h3>
 <p style="color:var(--muted)">Public curated lists — <a href="https://github.com/modelcontextprotocol/servers" rel="noopener">modelcontextprotocol/servers</a>, <a href="https://github.com/punkpeye/awesome-mcp-servers" rel="noopener">punkpeye/awesome-mcp-servers</a>, <a href="https://github.com/VoltAgent/awesome-agent-skills" rel="noopener">VoltAgent/awesome-agent-skills</a> — enriched via the GitHub API. The pipeline reruns weekly; dead repos are dropped automatically. The dataset and pipeline are open source on <a href="https://github.com/wookat/mcp-index" rel="noopener">GitHub</a>.</p>
 <h3 style="margin:16px 0 6px;font-size:15.5px">How do I add or remove a listing?</h3>
@@ -416,6 +424,7 @@ app.get('/about', (c) => {
       { '@type': 'Question', name: 'What is an MCP server?', acceptedAnswer: { '@type': 'Answer', text: 'MCP (Model Context Protocol) is an open protocol that lets AI models securely use external tools and data sources. An MCP server exposes tools (APIs, databases, browsers, file systems…) to any MCP-compatible client such as Claude Desktop, Claude Code, Cursor, VS Code or Windsurf.' } },
       { '@type': 'Question', name: 'What is an agent skill?', acceptedAnswer: { '@type': 'Answer', text: 'An agent skill is a folder with a SKILL.md file (instructions plus optional scripts) that AI coding agents like Claude Code, Codex CLI or Gemini CLI load on demand to perform a specialized task.' } },
       { '@type': 'Question', name: 'How is the quality score computed?', acceptedAnswer: { '@type': 'Answer', text: '0–100, from: log-scaled GitHub stars (max 40), maintenance activity based on last commit (max 25), license present (10), official status (10), not archived (5), meaningful description (5), topics (5). Every entry\'s detail page shows its full per-component breakdown.' } },
+      { '@type': 'Question', name: 'What do the activity badges mean?', acceptedAnswer: { '@type': 'Answer', text: 'They reflect the repository\u2019s last commit at the time of the weekly refresh: Active \u2014 within 30 days; Maintained \u2014 1\u20133 months; Stale \u2014 3\u201312 months; Inactive \u2014 over a year; Archived \u2014 archived by its owner.' } },
       { '@type': 'Question', name: 'Where does the data come from?', acceptedAnswer: { '@type': 'Answer', text: 'Public curated lists — modelcontextprotocol/servers, punkpeye/awesome-mcp-servers, VoltAgent/awesome-agent-skills — enriched via the GitHub API. The pipeline reruns weekly; dead repos are dropped automatically.' } },
     ],
   });
