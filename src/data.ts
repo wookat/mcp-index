@@ -79,6 +79,21 @@ export interface Query {
   page: number;
 }
 
+// Single source of truth for the six filter dimensions: search(), facet
+// counting, and facet key extraction all derive from this table.
+export const FILTER_DIMS: { key: 'type' | 'category' | 'lang' | 'activity' | 'install' | 'official'; get(i: Item): string }[] = [
+  { key: 'type', get: (i) => i.type },
+  { key: 'category', get: (i) => catSlug(i.category) },
+  { key: 'lang', get: (i) => i.language || '' },
+  { key: 'activity', get: (i) => i.activity },
+  { key: 'install', get: (i) => i.install },
+  { key: 'official', get: (i) => (i.official ? 'yes' : '') },
+];
+
+export function matchesDims(i: Item, q: Query, except?: string): boolean {
+  return FILTER_DIMS.every((d) => d.key === except || !q[d.key] || d.get(i).toLowerCase() === q[d.key]!.toLowerCase());
+}
+
 const SYNONYMS: Record<string, string[]> = {
   k8s: ['kubernetes'], kubernetes: ['k8s'],
   postgres: ['postgresql'], postgresql: ['postgres'],
@@ -126,13 +141,7 @@ export function matchesText(i: Item, q?: string): boolean {
 }
 
 export function search(query: Query, perPage = 48): { results: Item[]; total: number; pages: number } {
-  let list = ITEMS;
-  if (query.type) list = list.filter((i) => i.type === query.type);
-  if (query.category) list = list.filter((i) => catSlug(i.category) === query.category);
-  if (query.lang) list = list.filter((i) => (i.language || '').toLowerCase() === query.lang!.toLowerCase());
-  if (query.activity) list = list.filter((i) => i.activity === query.activity);
-  if (query.install) list = list.filter((i) => i.install === query.install);
-  if (query.official === 'yes') list = list.filter((i) => i.official);
+  let list: Item[] = ITEMS.filter((i) => matchesDims(i, query));
   if (query.q) {
     const q = query.q.toLowerCase().trim();
     const terms = q.split(/\s+/).filter(Boolean);

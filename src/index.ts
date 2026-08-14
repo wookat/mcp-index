@@ -1,5 +1,6 @@
-import { Hono } from 'hono';
-import { ITEMS, BY_SLUG, CATEGORIES, TOPIC_CATEGORIES, COLLECTIONS, STATS, GENERATED_AT, catSlug, search, matchesText, Query, Item } from './data';
+import { Hono, Context } from 'hono';
+import { ITEMS, BY_SLUG, CATEGORIES, TOPIC_CATEGORIES, COLLECTIONS, STATS, GENERATED_AT, catSlug, search, matchesText, matchesDims, FILTER_DIMS, Query, Item } from './data';
+import SCORING from './scoring.json';
 import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, grade, ACTIVITY_LABEL, ACTIVITY_TITLE, SITE } from './html';
 import OG_IMAGE from './og.png';
 
@@ -52,14 +53,7 @@ const LANGS = (() => {
 
 /** Items matching every dimension of q except the excluded one (for facet counts). */
 function baseFor(q: Query, except: string): Item[] {
-  return ITEMS.filter((i) =>
-    matchesText(i, q.q) &&
-    (except === 'type' || !q.type || i.type === q.type) &&
-    (except === 'category' || !q.category || catSlug(i.category) === q.category) &&
-    (except === 'lang' || !q.lang || (i.language || '').toLowerCase() === q.lang.toLowerCase()) &&
-    (except === 'activity' || !q.activity || i.activity === q.activity) &&
-    (except === 'install' || !q.install || i.install === q.install) &&
-    (except === 'official' || !q.official || i.official));
+  return ITEMS.filter((i) => matchesText(i, q.q) && matchesDims(i, q, except));
 }
 
 function facetSidebar(q: Query, action: string): string {
@@ -82,10 +76,11 @@ function facetSidebar(q: Query, action: string): string {
   };
   const facet = (title: string, dim: keyof Query, opts: [string, string][], cur?: string) => {
     const base = baseFor(q, dim as string);
+    const get = FILTER_DIMS.find((d) => d.key === dim)!.get;
     const counts = new Map<string, number>();
     for (const i of base) {
-      const key = dim === 'type' ? i.type : dim === 'category' ? catSlug(i.category) : dim === 'lang' ? (i.language || '') : dim === 'activity' ? i.activity : dim === 'official' ? (i.official ? 'yes' : '') : i.install;
-      counts.set(key.toLowerCase(), (counts.get(key.toLowerCase()) || 0) + 1);
+      const key = get(i).toLowerCase();
+      counts.set(key, (counts.get(key) || 0) + 1);
     }
     const rows = opts
       .map(([v, l]) => ({ v, l, n: counts.get(v.toLowerCase()) || 0 }))
@@ -107,7 +102,7 @@ ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, s
 <details class="mfacets"><summary>Filters${nActive ? ` (${nActive} active)` : ''}</summary>${clear}${inner}</details>`;
 }
 
-function listPage(c: any, q: Query, opts: { path: string; title: string; h1: string; desc: string; action: string; parent?: { href: string; label: string } }) {
+function listPage(c: Context<{ Bindings: Env }>, q: Query, opts: { path: string; title: string; h1: string; desc: string; action: string; parent?: { href: string; label: string } }) {
   const t0 = Date.now();
   const { results, total, pages } = search(q);
   const ms = Date.now() - t0;
@@ -293,29 +288,31 @@ function installSnippet(i: Item): { label: string; code: string } | null {
   return { label: 'Install from source', code: `git clone https://github.com/${i.repo}.git\n# See the repository README for setup instructions` };
 }
 
-/** Mirrors pipeline/build.mjs qualityScore(); components the dataset doesn't expose
- * (description source, 100-point cap) are reconciled against the published score so
- * the breakdown always sums to exactly i.score. */
+/** Recomputes the pipeline's qualityScore() components from the shared weight
+ * table in scoring.json; components the dataset doesn't expose (description
+ * source, cap) are reconciled against the published score so the breakdown
+ * always sums to exactly i.score. */
 function scoreBreakdown(i: Item): { label: string; got: number; max: number }[] {
-  let stars = Math.min(40, Math.round(Math.log10(i.stars + 1) * 10));
-  const act = ({ active: 25, maintained: 18, stale: 8, inactive: 0, archived: 0 } as Record<string, number>)[i.activity] ?? 0;
-  const license = i.license ? 10 : 0;
-  const official = i.official ? 10 : 0;
-  const notArchived = i.archived ? 0 : 5;
-  const topics = i.topics.length >= 3 ? 5 : 0;
+  let stars = Math.min(SCORING.starsMax, Math.round(Math.log10(i.stars + 1) * SCORING.starsLogFactor));
+  const act = (SCORING.activity as Record<string, number>)[i.activity] ?? 0;
+  const license = i.license ? SCORING.license : 0;
+  const official = i.official ? SCORING.official : 0;
+  const notArchived = i.archived ? 0 : SCORING.notArchived;
+  const topics = i.topics.length >= SCORING.topicsMin ? SCORING.topics : 0;
   const known = stars + act + license + official + notArchived + topics;
   // Pipeline scored the description bonus on the GitHub description, which isn't in the dataset.
-  const desc = Math.max(0, Math.min(5, i.score - known));
-  const over = known + desc - i.score; // >0 only when the pipeline capped the score at 100
+  const desc = Math.max(0, Math.min(SCORING.description, i.score - known));
+  const over = known + desc - i.score; // >0 only when the pipeline capped the score
   if (over > 0) stars = Math.max(0, stars - over);
+  const actMax = Math.max(...Object.values(SCORING.activity as Record<string, number>));
   return [
-    { label: 'GitHub stars (log scale)', got: stars, max: 40 },
-    { label: 'Maintenance activity', got: act, max: 25 },
-    { label: 'License present', got: license, max: 10 },
-    { label: 'Official project', got: official, max: 10 },
-    { label: 'Not archived', got: notArchived, max: 5 },
-    { label: 'Meaningful description', got: desc, max: 5 },
-    { label: 'Repo topics set', got: topics, max: 5 },
+    { label: 'GitHub stars (log scale)', got: stars, max: SCORING.starsMax },
+    { label: 'Maintenance activity', got: act, max: actMax },
+    { label: 'License present', got: license, max: SCORING.license },
+    { label: 'Official project', got: official, max: SCORING.official },
+    { label: 'Not archived', got: notArchived, max: SCORING.notArchived },
+    { label: 'Meaningful description', got: desc, max: SCORING.description },
+    { label: 'Repo topics set', got: topics, max: SCORING.topics },
   ];
 }
 
@@ -436,7 +433,8 @@ app.get('/og.png', (c) => c.body(OG_IMAGE, 200, {
   'Cache-Control': 'public, max-age=86400',
 }));
 
-app.get('/llms.txt', (c) => c.text(`# MCP Index
+// Like the sitemap, this only changes on deploy — built once at module init.
+const LLMS_TXT = `# MCP Index
 
 > A structured, quality-scored directory of ${STATS.servers.toLocaleString()} Model Context Protocol (MCP) servers and ${STATS.skills.toLocaleString()} SKILL.md-based agent skills. Every entry carries live GitHub metadata (stars, forks, license, last commit), an install method, a maintenance-activity level and a transparent 0–100 quality score. Data refreshes weekly; last update ${GENERATED_AT.slice(0, 10)}.
 
@@ -457,7 +455,8 @@ app.get('/llms.txt', (c) => c.text(`# MCP Index
 
 - Quality scores are heuristic signals, not endorsements. Always review code before installing.
 - MCP Index is not affiliated with Anthropic or the Model Context Protocol project.
-`));
+`;
+app.get('/llms.txt', (c) => c.text(LLMS_TXT));
 
 app.get('/favicon.ico', (c) => c.body(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="24" fill="#8b93ff"/><text x="50" y="68" font-size="52" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="#0b0b12">M</text></svg>`,
@@ -469,15 +468,19 @@ app.get('/robots.txt', (c) => c.text(`User-agent: *\nAllow: /\nDisallow: /api/\n
 
 app.get(`/${INDEXNOW_KEY}.txt`, (c) => c.text(INDEXNOW_KEY));
 
+// Sitemap content only changes on deploy, so build it once per isolate.
+let sitemapXml: string | undefined;
 app.get('/sitemap.xml', (c) => {
-  const urls: string[] = ['/', '/servers', '/skills', '/categories', '/about',
-    ...CATEGORIES.map((cat) => `/category/${cat.slug}`),
-    ...ITEMS.map((i) => `/s/${i.slug}`)];
-  const lastmod = GENERATED_AT.slice(0, 10);
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-    .map((u) => `<url><loc>${SITE}${u}</loc><lastmod>${lastmod}</lastmod></url>`)
-    .join('\n')}\n</urlset>`;
-  return c.body(xml, 200, { 'Content-Type': 'application/xml' });
+  if (!sitemapXml) {
+    const urls: string[] = ['/', '/servers', '/skills', '/categories', '/about',
+      ...CATEGORIES.map((cat) => `/category/${cat.slug}`),
+      ...ITEMS.map((i) => `/s/${i.slug}`)];
+    const lastmod = GENERATED_AT.slice(0, 10);
+    sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+      .map((u) => `<url><loc>${SITE}${u}</loc><lastmod>${lastmod}</lastmod></url>`)
+      .join('\n')}\n</urlset>`;
+  }
+  return c.body(sitemapXml, 200, { 'Content-Type': 'application/xml' });
 });
 
 // Best-effort counters: KV read-modify-write can lose concurrent increments;
