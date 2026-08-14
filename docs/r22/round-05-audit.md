@@ -39,3 +39,10 @@
 - 错误路径整体质量高于常见水平（404 推荐卡、无结果引导、参数防御完备），本轮均为收尾级打磨。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 05 verdict（2026-08-14 线上复验）
+- E1 PASS：/servers/ → 301 /servers；/servers/?lang=Python → 301 保留 query；/s/CRYSTALDBA-POSTGRES-MCP → 301 小写详情页。
+- E2 PASS：/favicon.ico 200 image/svg+xml，Cache-Control public max-age=604800。
+- E3 PASS：2KB body → 400，正常 beacon → 200；架构维持现状（与审查意见一致）。
+- E4 PASS：/foo-bar-随机 显示 "The page you're looking for doesn't exist."；/s/foo-随机 保留 "removed in a weekly refresh"。（注：部署后数分钟内旧 404 有 max-age=300 边缘缓存残留，属预期。）
+4/4 PASS，无 FAIL 项进入下一轮。
