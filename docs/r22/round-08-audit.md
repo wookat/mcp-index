@@ -37,3 +37,10 @@
 - H2/H3 是政策合规向（防风险），H1/H4 是收录质量向；四项皆小改，可一个 PR 完成。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 08 verdict（2026-08-14 线上复验）
+- H1 PASS：/servers?page=2 canonical 自引用带 ?page=2；越界 ?page=99999 → canonical ?page=68（钳制治本）；筛选参数继续收敛（?lang=Python&page=2 → ?page=2）。
+- H2 PASS：robots.txt 已含 `Disallow: /search`，/servers、/category/* 未受影响。
+- H3 PASS：详情页 JSON-LD 已无 aggregateRating，含 interactionStatistic/InteractionCounter。
+- H4 PASS：sitemap distinct lastmod 实测 474 个日期（原 1 个）。
+4/4 PASS，无 FAIL 项进入下一轮。
