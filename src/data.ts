@@ -94,10 +94,16 @@ function normalize(s: string): string {
     .trim();
 }
 
+const HAYSTACKS = new Map<string, { norm: string; squashed: string }>();
+
 export function itemHaystack(i: Item): { norm: string; squashed: string } {
-  const raw = `${i.name} ${i.repo} ${i.description} ${i.category} ${i.topics.join(' ')}`;
-  const norm = normalize(raw);
-  return { norm, squashed: norm.replace(/ /g, '') };
+  let h = HAYSTACKS.get(i.slug);
+  if (!h) {
+    const norm = normalize(`${i.name} ${i.repo} ${i.description} ${i.category} ${i.topics.join(' ')}`);
+    h = { norm, squashed: norm.replace(/ /g, '') };
+    HAYSTACKS.set(i.slug, h);
+  }
+  return h;
 }
 
 function termMatches(hay: { norm: string; squashed: string }, term: string): boolean {
@@ -120,7 +126,7 @@ export function search(query: Query, perPage = 48): { results: Item[]; total: nu
   if (query.lang) list = list.filter((i) => (i.language || '').toLowerCase() === query.lang!.toLowerCase());
   if (query.activity) list = list.filter((i) => i.activity === query.activity);
   if (query.install) list = list.filter((i) => i.install === query.install);
-  if (query.official) list = list.filter((i) => i.official);
+  if (query.official === 'yes') list = list.filter((i) => i.official);
   if (query.q) {
     const q = query.q.toLowerCase().trim();
     const terms = q.split(/\s+/).filter(Boolean);

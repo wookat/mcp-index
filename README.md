@@ -28,7 +28,7 @@ node pipeline/build.mjs               # merge + score -> data/index.json
 node pipeline/readme.mjs              # regenerate DIRECTORY.md
 ```
 
-A GitHub Actions workflow ([weekly-refresh.yml](.github/workflows/weekly-refresh.yml)) reruns the pipeline every Monday, commits the refreshed data, redeploys the site and pings IndexNow.
+The weekly refresh is run by a Devin ops session (GitHub Actions is disabled company-wide): run the pipeline above, commit the refreshed data via PR to `main`, then deploy from `main` and ping IndexNow. Refresh and deploy must always happen together — a refresh that isn't deployed leaves the live site stale.
 
 Sources: [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) · [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) · [VoltAgent/awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills). Dead/renamed repos are dropped automatically on each refresh.
 
