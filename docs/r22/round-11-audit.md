@@ -56,3 +56,13 @@
 - 本轮 K1–K3 为最后一批小一致性项（P0/P1 已清零）。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 11 verdict（2026-08-14 线上复验）
+- K1 PASS：6 个上下文（/servers、/skills、?lang=Python、?lang=Rust、/search?q=mcp、/category/databases）的 Category 与 Language facet 全部严格降序，逆序数 0（此前 /servers?lang=Python 有 7 处）；Activity 仍为生命周期语序（active→maintained→stale→…），符合 K1 指定的显式例外，不计为违规。视觉复核：docs/r22/screenshots/round-11/desk-servers-after.png 侧栏 422→374→…→78→70→68→66 连续降序。
+- K2 PASS：/servers?lang=Go 侧栏出现 Version Control（6），此前不可发现；且选中全局排名外的分类时仍可见（/servers?category=version-control 中该项 aria-current="true" 保留）。截断改为上下文计数排序之后（/servers 显示 24 行、lang=Rust 上下文仅 22 行）。
+- K3 PASS：/categories 现有两个对称 h2（Topic categories / Skill collections）。
+- 回归：Official facet 计数=结果数（242==242）、q=postgres 62 结果、skip 链接与 facets landmark 保留、页面渲染无异常。
+3/3 PASS。
+
+## 11 轮总账（最终）
+R1 9/9 · R2 5/5 · R3 4/4 · R4 7/7 · R5 4/4 · R6 5/5 · R7 5/5 · R8 4/4 · R9 4/4 · R10 5/5 · R11 3/3 = **55 项全 PASS，零 FAIL 跨轮**；P0 2 项、P1 2 项均已治本。R22 循环收束。
