@@ -43,3 +43,12 @@
 - G1 是本轮核心：把"同一知识写两遍"合并，其余为小改。均不改变线上行为，建议一个 PR 完成并以 R2/R5 的既有断言（facet 计数=结果数、301、404）做回归。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 07 verdict（2026-08-14 线上复验，行为不变性回归）
+- G1 PASS：六组维度组合实测 facet 计数=结果数（Official 242==242、Python 1,099、stale 826、docker 66、q+type、category+lang 均正常）。
+- G2 PASS：typecheck 全绿（fix 报告），线上行为无变化。
+- G3 PASS：详情页 breakdown 分量和=总分实测（35+8+10+0+5+5+0=63/100）；pipeline 重跑 stats 不变。
+- G4 PASS：sitemap 4,335 URL 正常返回；/servers 0.12s、/search?q=postgres 0.16s。
+- G5 PASS：管线侧 slug 唯一性校验（当前数据无冲突，线上无行为变化）。
+- 回归：搜索 top3 排序与改前一致（crystaldba/javimaligno/postgres-aiops）。
+5/5 PASS，无 FAIL 项进入下一轮。
