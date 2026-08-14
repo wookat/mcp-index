@@ -47,13 +47,21 @@ function baseFor(q: Query, except: string): Item[] {
 }
 
 function facetSidebar(q: Query, action: string): string {
+  const routeCat = action.startsWith('/category/');
   const link = (dim: keyof Query, value: string, label: string, count: number, on: boolean) => {
     const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(q)) if (v && k !== 'page' && k !== dim && k !== 'type') qs.set(k, String(v));
+    for (const [k, v] of Object.entries(q)) if (v && k !== 'page' && k !== dim && k !== 'type' && !(routeCat && k === 'category')) qs.set(k, String(v));
     if (action === '/search' && q.type) qs.set('type', q.type);
     if (!on) qs.set(dim as string, value);
     if (dim === 'type') { qs.delete('type'); if (!on) qs.set('type', value); }
-    const href = action + (qs.toString() ? '?' + qs.toString() : '');
+    // Category is route-driven on /category/:slug pages: link to the other
+    // category's path instead of a query param the route would override.
+    let base = action;
+    if (routeCat && dim === 'category') {
+      qs.delete('category');
+      base = on ? '/search' : `/category/${value}`;
+    }
+    const href = base + (qs.toString() ? '?' + qs.toString() : '');
     return `<a href="${esc(href)}"${on ? ' class="on"' : ''}>${esc(label)}<span>${count.toLocaleString()}</span></a>`;
   };
   const facet = (title: string, dim: keyof Query, opts: [string, string][], cur?: string) => {
@@ -76,7 +84,7 @@ ${facet('Category', 'category', CATEGORIES.slice(0, 24).map((c) => [c.slug, c.na
 ${facet('Language', 'lang', LANGS.map((l) => [l, l] as [string, string]), q.lang)}
 ${facet('Activity', 'activity', Object.entries(ACTIVITY_LABEL).filter(([k]) => k !== 'unknown') as [string, string][], q.activity)}
 ${facet('Install method', 'install', Object.entries(INSTALL_LABEL) as [string, string][], q.install)}`;
-  const nActive = [q.category, q.lang, q.activity, q.install, q.official].filter(Boolean).length;
+  const nActive = [routeCat ? undefined : q.category, q.lang, q.activity, q.install, q.official].filter(Boolean).length;
   const clearHref = action + (q.q ? '?q=' + encodeURIComponent(q.q) : '');
   const clear = nActive ? `<div class="facet"><a href="${esc(clearHref)}" style="color:var(--accent)">✕ Clear all filters<span>${nActive}</span></a></div>` : '';
   return `<aside class="facets" aria-label="Filters">${clear}${inner}</aside>
@@ -88,16 +96,16 @@ function listPage(c: any, q: Query, opts: { path: string; title: string; h1: str
   const { results, total, pages } = search(q);
   const ms = Date.now() - t0;
   const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(q)) if (v && k !== 'page') qs.set(k, String(v));
+  for (const [k, v] of Object.entries(q)) if (v && k !== 'page' && !(k === 'type' && opts.action !== '/search') && !(k === 'category' && opts.action.startsWith('/category/'))) qs.set(k, String(v));
   const base = opts.action + (qs.toString() ? '?' + qs.toString() : '');
   const sortSel = `<form method="get" action="${opts.action}">
-${['q', 'type', 'category', 'lang', 'activity', 'install', 'official'].map((k) => (q as any)[k] && !(opts.action !== '/search' && k === 'type') ? `<input type="hidden" name="${k}" value="${esc(String((q as any)[k]))}">` : '').join('')}
+${['q', 'type', 'category', 'lang', 'activity', 'install', 'official'].map((k) => (q as any)[k] && !(opts.action !== '/search' && k === 'type') && !(opts.action.startsWith('/category/') && k === 'category') ? `<input type="hidden" name="${k}" value="${esc(String((q as any)[k]))}">` : '').join('')}
 <label style="color:var(--faint);font-size:12.5px" for="sort">Sort</label>
 <select class="sel" id="sort" name="sort" onchange="this.form.submit()">
 <option value="">Quality score</option>
 <option value="stars"${q.sort === 'stars' ? ' selected' : ''}>Most stars</option>
 <option value="updated"${q.sort === 'updated' ? ' selected' : ''}>Recently updated</option>
-</select></form>`;
+</select><noscript><button class="btn" type="submit">Apply</button></noscript></form>`;
   const body = `<main class="wrap">
 <div class="crumbs"><a href="/">Home</a> › ${esc(opts.h1)}</div>
 <div style="margin-top:14px"><h1 class="page">${esc(opts.h1)}</h1>

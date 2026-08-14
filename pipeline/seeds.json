@@ -1,0 +1,58 @@
+[
+  {
+    "type": "server",
+    "name": "notion-mcp-server",
+    "repo": "makenotion/notion-mcp-server",
+    "category": "Workplace & Productivity",
+    "description": "Official Notion MCP server — search, read and write Notion pages and databases from AI agents."
+  },
+  {
+    "type": "server",
+    "name": "stripe-agent-toolkit",
+    "repo": "stripe/ai",
+    "category": "Finance & Fintech",
+    "description": "Official Stripe agent toolkit — MCP server and SDK tools for payments, customers and billing APIs."
+  },
+  {
+    "type": "server",
+    "name": "mcp-server-elasticsearch",
+    "repo": "elastic/mcp-server-elasticsearch",
+    "category": "Search & Data Extraction",
+    "description": "Official Elasticsearch MCP server — query and explore Elasticsearch indices from AI agents."
+  },
+  {
+    "type": "server",
+    "name": "mongodb-mcp-server",
+    "repo": "mongodb-js/mongodb-mcp-server",
+    "category": "Databases",
+    "description": "Official MongoDB MCP server — connect to MongoDB databases and MongoDB Atlas from AI agents."
+  },
+  {
+    "type": "server",
+    "name": "mcp-jetbrains",
+    "repo": "JetBrains/mcp-jetbrains",
+    "category": "Developer Tools",
+    "description": "Official JetBrains MCP server — work with IntelliJ, PyCharm, WebStorm and other JetBrains IDEs."
+  },
+  {
+    "type": "server",
+    "name": "heroku-mcp-server",
+    "repo": "heroku/heroku-mcp-server",
+    "category": "Cloud Platforms",
+    "description": "Official Heroku Platform MCP server — manage apps, add-ons and deployments via the Heroku CLI."
+  },
+  {
+    "type": "server",
+    "name": "twilio-mcp",
+    "repo": "twilio-labs/mcp",
+    "category": "Communication",
+    "description": "Official Twilio MCP servers — expose Twilio messaging, voice and other APIs to AI agents."
+  },
+  {
+    "type": "server",
+    "name": "paypal-agent-toolkit",
+    "repo": "paypal/agent-toolkit",
+    "category": "Finance & Fintech",
+    "description": "Official PayPal agent toolkit — MCP server and tools for PayPal payments and invoicing APIs."
+  }
+]

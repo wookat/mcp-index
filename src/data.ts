@@ -130,15 +130,26 @@ export function search(query: Query, perPage = 48): { results: Item[]; total: nu
   if (query.q) {
     const q = query.q.toLowerCase().trim();
     const terms = q.split(/\s+/).filter(Boolean);
+    // Layered relevance per term: exact word in name > name substring > synonym
+    // word in name > description/topic match. Ties break by item quality score,
+    // with a slight server preference on single-word queries (directory users
+    // searching a bare product name almost always want a server, not a vendor skill).
+    const serverBias = terms.length === 1;
     list = list
       .map((i) => {
         const hay = itemHaystack(i);
         const name = normalize(i.name);
+        const nameWords = new Set(name.split(' '));
         let score = 0;
         for (const t of terms) {
           if (!termMatches(hay, t)) return null;
-          score += name.includes(normalize(t)) ? 3 : 1;
+          const tn = normalize(t);
+          if (nameWords.has(tn)) score += 10;
+          else if (name.includes(tn)) score += 5;
+          else if ((SYNONYMS[tn] || []).map(normalize).some((syn) => syn.split(' ').every((w) => nameWords.has(w)))) score += 4;
+          else score += 1;
         }
+        if (serverBias && i.type === 'server') score += 2;
         return { i, score };
       })
       .filter((x): x is { i: Item; score: number } => x !== null)
