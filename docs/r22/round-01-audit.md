@@ -53,3 +53,15 @@
 - page=9999/负数被安全 clamp；/api/track 白名单校验正确（bogus 事件 400）。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 01 verdict（2026-08-14 线上复验，全部实测）
+- A1 PASS：/api/stats generatedAt=2026-08-14T01:25、total=4201；首页「last update 2026-08-14」；origin/main 已无 .github/workflows。
+- A2 PASS：/api/stats 0.24s（原 7.28s）。
+- A3 PASS：首页 Top rated 与 Official picks slug 无交集（前 24 链接无重复）。
+- A4 PASS：/s/microsoft-microsoft-markitdown 安装片段 args=["markitdown-mcp"]。
+- A5 PASS：?official=no → 4,201 条（=全量），?official=yes → 251 条。
+- A6 PASS：/search?q=postgres 0.14s、q=browser+automation 0.23s（原 340–390ms）。
+- A7 PASS：375px 头部第二行出现全宽搜索框（verify-detail-375-fix.png）。
+- A8 PASS（随 A2/A6 部署上线，客户端 JS 只发 ev 字段）。
+- A9 PASS：eyebrow 显示当日日期；daysAgo 以 GENERATED_AT 为基准（详情页 Updated 15d ago 与数据一致）。
+9/9 PASS，无 FAIL 项进入下一轮。
