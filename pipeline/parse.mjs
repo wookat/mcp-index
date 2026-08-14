@@ -118,6 +118,20 @@ function add(e) {
   }
 }
 
+// --- Source 4: curated vendor-official seed list (pipeline/seeds.json) ---
+// Vendor first-party servers the awesome lists miss; add() dedupes against them.
+{
+  const seeds = JSON.parse(readFileSync(join(ROOT, 'seeds.json'), 'utf8'));
+  for (const s of seeds) {
+    add({
+      type: s.type, name: s.name, repo: s.repo, url: `https://github.com/${s.repo}`,
+      subpath: null, category: s.category, description: s.description,
+      official: true, languagesHint: [], scopes: [],
+      source: 'seeds',
+    });
+  }
+}
+
 mkdirSync(join(ROOT, '..', 'data'), { recursive: true });
 writeFileSync(join(ROOT, '..', 'data', 'entries-raw.json'), JSON.stringify(entries, null, 1));
 const byType = entries.reduce((a, e) => ((a[e.type] = (a[e.type] || 0) + 1), a), {});
