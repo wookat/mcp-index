@@ -56,3 +56,12 @@
 - 回归断言（修复后必须仍成立）：JSON-LD 仍是合法 JSON（Rich Results 可解析）、`/search?q=…` 结果与标题正常、301 规范化与 404 行为不变、/api/track 白名单与 1KB 上限不变。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 10 verdict（2026-08-14 线上复验）
+- J1 PASS（P0 已闭合）：真浏览器复测 `/search?q=</script><script>window.__x=1;alert(1)</script>` 无弹窗、`window.__x` 为 undefined；响应中 payload 呈 `\u003c/script\u003e`；首页/列表/详情/搜索页共 5 个 ld+json 块全部 JSON.parse 通过（Rich Results 解析不受影响）。数据集入口同处收口，存储型风险面一并关闭。
+- J2 PASS：`//example.com/` → `301 location: /example.com`（站内相对），跟随后落地 mcp.zalize.com 自身 404，不再出站。
+- J3 PASS：`/` 四个头齐全（CSP default-src 'self' + frame-ancestors 'none'、nosniff、Referrer-Policy、X-Frame-Options DENY）；真浏览器复扫页面样式/头像/内联脚本均正常，CSP 无误伤。
+- J4 PASS：并发 60 连发第 1 次即出现 429、后段几乎全 429；随后顺序 40 连发同样大量 429。注意（非 FAIL）：低速顺序请求（~1 req/s、跨 colo）可全部 200 通过——per-colo 近似计数的固有语义，足以阻断脚本化灌注，慢速灌注仍可行，记为可接受残留。
+- J5 PASS：`/api/stats` 返回 `cache-control: public, max-age=60`。
+- 回归断言全部成立：track 白名单（ev=evil → 400）与 1KB 上限（400）不变、`/servers/` → 301 `/servers`、未知路径 404、`/search?q=postgres` 62 结果正常。
+5/5 PASS（含 1 项 P0），无 FAIL 项进入下一轮。
