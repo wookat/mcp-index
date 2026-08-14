@@ -41,3 +41,11 @@
 - F1+F2 建议合并为一次 /categories 与 facet 渲染层改动（方案 a），不动数据管线；F3/F4/F5 均为小改。
 
 ## verdict（等修改员 fix 后线上复验追加）
+
+## Round 06 verdict（2026-08-14 线上复验）
+- F1 PASS：/servers facet 已无 "Skills by X"（实测 0 处）；/categories 分出 "Skill collections" 分区；集合路由仍 200 无死链。卡片上的分类 chip 仍显示条目原始分类（如 Skills by Google Cloud），属条目属性展示、与 facet 导航分离，合理。
+- F2 PASS：主题分类按条目数降序（"sorted by size" 副标题）+ Skill collections 分区。
+- F3 PASS：act-* 徽章实测 title="Last commit within 30 days" 等；About FAQ 新增 "What do the activity badges mean?"（含 JSON-LD）。
+- F4 PASS：首页 title 实测 "MCP Index — 3,242 MCP Servers · 967 Agent Skills"。
+- F5 PASS：/category/databases 面包屑含 Categories 链接。
+5/5 PASS（1 P1 + 4 P2），无 FAIL 项进入下一轮。
