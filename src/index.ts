@@ -10,6 +10,20 @@ type Env = { METRICS: KVNamespace; TRACK_RL: { limit(opts: { key: string }): Pro
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Per-IP (per-colo) rate limit on the hot endpoints, sharing the ratelimit
+// binding. Zone-level Rate Limiting rules would count globally instead of
+// per-colo; scripts/cf-zone-ratelimit.sh applies that rule once a token with
+// Zone WAF edit permission is available.
+app.use('/search', rateLimitByIp);
+app.use('/api/stats', rateLimitByIp);
+async function rateLimitByIp(c: Context<{ Bindings: Env }>, next: () => Promise<void>): Promise<Response | void> {
+  const ip = c.req.header('cf-connecting-ip');
+  if (ip && !(await c.env.TRACK_RL.limit({ key: `${c.req.path}:${ip}` })).success) {
+    return c.json({ ok: false, error: 'rate_limited' }, 429);
+  }
+  return next();
+}
+
 // Content only changes on deploy (dataset is inlined), so pages are safe to
 // cache briefly at the edge/browser. Short TTL keeps post-deploy staleness bounded.
 app.use('*', async (c, next) => {
