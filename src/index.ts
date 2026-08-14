@@ -12,6 +12,13 @@ const app = new Hono<{ Bindings: Env }>();
 // Content only changes on deploy (dataset is inlined), so pages are safe to
 // cache briefly at the edge/browser. Short TTL keeps post-deploy staleness bounded.
 app.use('*', async (c, next) => {
+  // Canonicalize URL variants (trailing slash, uppercase /s/ slugs) with a 301
+  // so shared/hand-typed links land on the canonical page instead of a 404.
+  const u = new URL(c.req.url);
+  let p = u.pathname;
+  if (p.length > 1 && p.endsWith('/')) p = p.replace(/\/+$/, '') || '/';
+  if (/^\/s\//i.test(p)) p = p.toLowerCase();
+  if (p !== u.pathname) return c.redirect(p + u.search, 301);
   await next();
   if ((c.req.method === 'GET' || c.req.method === 'HEAD') && !c.req.path.startsWith('/api/') && !c.res.headers.has('Cache-Control')) {
     c.res.headers.set('Cache-Control', 'public, max-age=300');
@@ -443,6 +450,12 @@ app.get('/llms.txt', (c) => c.text(`# MCP Index
 - MCP Index is not affiliated with Anthropic or the Model Context Protocol project.
 `));
 
+app.get('/favicon.ico', (c) => c.body(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="24" fill="#8b93ff"/><text x="50" y="68" font-size="52" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="#0b0b12">M</text></svg>`,
+  200,
+  { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=604800' },
+));
+
 app.get('/robots.txt', (c) => c.text(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${SITE}/sitemap.xml\n`));
 
 app.get(`/${INDEXNOW_KEY}.txt`, (c) => c.text(INDEXNOW_KEY));
@@ -458,7 +471,10 @@ app.get('/sitemap.xml', (c) => {
   return c.body(xml, 200, { 'Content-Type': 'application/xml' });
 });
 
+// Best-effort counters: KV read-modify-write can lose concurrent increments;
+// acceptable for anonymous usage metrics.
 app.post('/api/track', async (c) => {
+  if (parseInt(c.req.header('content-length') || '0', 10) > 1024) return c.json({ ok: false }, 400);
   try {
     const { ev } = await c.req.json<{ ev: string }>();
     const allowed = ['pageview', 'copy_install', 'repo_click', 'github_click'];
@@ -488,7 +504,7 @@ app.get('/api/stats', async (c) => {
 
 app.notFound((c) => c.html(layout({
   title: 'Not found — MCP Index', desc: 'Page not found', path: '/404',
-  body: `<main class="wrap"><div class="section" style="text-align:center;padding:40px 0 0"><h1 class="page">404 — Not found</h1><p style="color:var(--muted);margin:10px 0 20px">This entry may have been removed in a weekly refresh.</p><a class="btn" style="text-decoration:none" href="/">Back to home</a></div>
+  body: `<main class="wrap"><div class="section" style="text-align:center;padding:40px 0 0"><h1 class="page">404 — Not found</h1><p style="color:var(--muted);margin:10px 0 20px">${c.req.path.startsWith('/s/') ? 'This entry may have been removed in a weekly refresh.' : 'The page you\u2019re looking for doesn\u2019t exist.'}</p><a class="btn" style="text-decoration:none" href="/">Back to home</a></div>
 <div class="section"><div class="section-head"><h2>These ones exist</h2></div><div class="grid">${ITEMS.slice(0, 6).map(card).join('')}</div></div></main>`,
 }), 404));
 
