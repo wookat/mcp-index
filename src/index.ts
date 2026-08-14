@@ -107,14 +107,14 @@ function listPage(c: any, q: Query, opts: { path: string; title: string; h1: str
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(q)) if (v && k !== 'page' && !(k === 'type' && opts.action !== '/search') && !(k === 'category' && opts.action.startsWith('/category/'))) qs.set(k, String(v));
   const base = opts.action + (qs.toString() ? '?' + qs.toString() : '');
-  const sortSel = `<form method="get" action="${opts.action}">
-${['q', 'type', 'category', 'lang', 'activity', 'install', 'official'].map((k) => (q as any)[k] && !(opts.action !== '/search' && k === 'type') && !(opts.action.startsWith('/category/') && k === 'category') ? `<input type="hidden" name="${k}" value="${esc(String((q as any)[k]))}">` : '').join('')}
-<label style="color:var(--faint);font-size:12.5px" for="sort">Sort</label>
-<select class="sel" id="sort" name="sort" onchange="this.form.submit()">
-<option value="">Quality score</option>
-<option value="stars"${q.sort === 'stars' ? ' selected' : ''}>Most stars</option>
-<option value="updated"${q.sort === 'updated' ? ' selected' : ''}>Recently updated</option>
-</select><noscript><button class="btn" type="submit">Apply</button></noscript></form>`;
+  const sortLink = (v: string, label: string) => {
+    if ((q.sort || '') === v) return `<span class="son">${label}</span>`;
+    const sq = new URLSearchParams(qs);
+    sq.delete('sort');
+    if (v) sq.set('sort', v);
+    return `<a href="${esc(opts.action + (sq.toString() ? '?' + sq.toString() : ''))}">${label}</a>`;
+  };
+  const sortSel = `<nav class="sortlinks" aria-label="Sort">Sort:${sortLink('', 'Quality')}${sortLink('stars', 'Stars')}${sortLink('updated', 'Updated')}</nav>`;
   const body = `<main class="wrap">
 <div class="crumbs"><a href="/">Home</a> › ${esc(opts.h1)}</div>
 <div style="margin-top:14px"><h1 class="page">${esc(opts.h1)}</h1>
@@ -162,7 +162,7 @@ ${eyebrow}
 <span class="stat"><b>${STATS.active.toLocaleString()}</b> active repos</span>
 </div>
 </div></div>
-<main class="wrap">
+<main class="wrap home">
 <div class="section">
 <div class="section-head"><div><h2>Top rated</h2>
 <p class="sub">Highest-scored community projects — stars × maintenance activity × license × docs signals.</p></div>
@@ -179,7 +179,7 @@ ${eyebrow}
 <div class="section-head"><h2>Recently updated</h2></div>
 <div class="grid">${recent.map(card).join('')}</div>
 </div>
-<div class="section">
+<div class="section cat-home">
 <div class="section-head"><div><h2>Browse by category</h2></div><span class="more"><a href="/categories">All ${STATS.categories} categories →</a></span></div>
 <div class="catgrid">${CATEGORIES.slice(0, 36).map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>
 </div>

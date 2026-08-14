@@ -162,13 +162,16 @@ footer.site .fine{margin-top:18px;color:var(--faint);font-size:12px;max-width:88
 footer.site a{color:var(--muted)}
 footer.site a:hover{color:var(--text)}
 main p a,footer.site .fine a{text-decoration:underline}
-/* select filters (sort) */
-select.sel{background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px}
+/* sort links */
+.sortlinks{color:var(--faint);font-size:13px;display:flex;gap:2px;align-items:center;flex-wrap:wrap}
+.sortlinks a,.sortlinks .son{padding:6px 8px;border-radius:8px;font-weight:600}
+.sortlinks a{color:var(--muted)}
+.sortlinks a:hover{color:var(--text);background:var(--card2);text-decoration:none}
+.sortlinks .son{color:var(--accent);background:var(--accent-soft)}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin:14px 0 12px}
-.toolbar form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 /* responsive */
 @media(max-width:900px){
-.cols{grid-template-columns:1fr}
+.cols{grid-template-columns:1fr;gap:14px}
 aside.facets{position:static;max-height:none;display:none}
 details.mfacets{display:block;margin:12px 0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px}
 details.mfacets summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--text2)}
@@ -178,18 +181,28 @@ aside.detail-side{position:static}
 }
 @media(max-width:640px){
 body{overflow-x:hidden}
+/* Search row first inside the header, and a negative sticky top exactly its
+   height: it scrolls away while the logo+nav rows stay stuck. */
+header.site{top:-59px}
 header.site .wrap{gap:6px 10px;flex-wrap:wrap;height:auto;padding-top:9px;padding-bottom:9px}
-.hsearch{order:10;flex-basis:100%;max-width:none}
+.hsearch{order:-1;flex-basis:100%;max-width:none}
+.hsearch input{font-size:16px;height:44px}
 nav.top{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
-nav.top a{padding:5px 6px;font-size:12.5px}
+nav.top a{padding:9px 8px;font-size:13.5px}
+.facet a{padding:10px;font-size:14px}
+.copybtn{padding:9px 14px}
 .toolbar{justify-content:flex-start}
 .searchbar{flex-direction:column}
+.searchbar input{font-size:16px}
 kbd.hint{display:none}
 .searchbar .btn{width:100%}
 .grid{grid-template-columns:1fr}
 .row{padding:14px}
 .row .avatar{width:36px;height:36px;font-size:15px;border-radius:9px}
 .breakdown .brow{grid-template-columns:110px 1fr 44px;gap:8px;font-size:12px}
+main.home{display:flex;flex-direction:column}
+main.home .section{margin:26px 0}
+main.home .cat-home{order:-1}
 }
 `;
 
