@@ -72,7 +72,7 @@ function facetSidebar(q: Query, action: string): string {
       base = on ? '/search' : `/category/${value}`;
     }
     const href = base + (qs.toString() ? '?' + qs.toString() : '');
-    return `<a href="${esc(href)}"${on ? ' class="on"' : ''}>${esc(label)}<span>${count.toLocaleString()}</span></a>`;
+    return `<a href="${esc(href)}"${on ? ' class="on" aria-current="true"' : ''}>${esc(label)}<span>${count.toLocaleString()}</span></a>`;
   };
   const facet = (title: string, dim: keyof Query, opts: [string, string][], cur?: string) => {
     const base = baseFor(q, dim as string);
@@ -118,7 +118,7 @@ function listPage(c: Context<{ Bindings: Env }>, q: Query, opts: { path: string;
     return `<a href="${esc(opts.action + (sq.toString() ? '?' + sq.toString() : ''))}">${label}</a>`;
   };
   const sortSel = `<nav class="sortlinks" aria-label="Sort">Sort:${sortLink('', 'Quality')}${sortLink('stars', 'Stars')}${sortLink('updated', 'Updated')}</nav>`;
-  const body = `<main class="wrap">
+  const body = `<main id="main" class="wrap">
 <div class="crumbs"><a href="/">Home</a> › ${opts.parent ? `<a href="${opts.parent.href}">${esc(opts.parent.label)}</a> › ` : ''}${esc(opts.h1)}</div>
 <div style="margin-top:14px"><h1 class="page">${esc(opts.h1)}</h1>
 <p class="sub" style="color:var(--muted);font-size:14px;margin-top:4px">${esc(opts.desc)}.</p></div>
@@ -155,7 +155,7 @@ app.get('/', (c) => {
     : `<div class="eyebrow"><span class="pulse"></span>Refreshed weekly · last update ${GENERATED_AT.slice(0, 10)}</div>`;
   const recent = [...ITEMS].sort((a, b) => b.pushedAt.localeCompare(a.pushedAt)).slice(0, 6);
   const body = `
-<div class="hero"><div class="wrap">
+<section class="hero" aria-label="Introduction"><div class="wrap">
 ${eyebrow}
 <h1>Find the right <span class="grad">MCP server</span><br>and <span class="grad">agent skill</span>, fast</h1>
 <p class="sub">A structured, quality-scored directory of ${STATS.servers.toLocaleString()} Model Context Protocol servers and ${STATS.skills.toLocaleString()} agent skills — with maintenance signals, install methods and stars.</p>
@@ -166,8 +166,8 @@ ${eyebrow}
 <span class="stat"><b>${STATS.categories}</b> categories</span>
 <span class="stat"><b>${STATS.active.toLocaleString()}</b> active repos</span>
 </div>
-</div></div>
-<main class="wrap home">
+</div></section>
+<main id="main" class="wrap home">
 <div class="section">
 <div class="section-head"><div><h2>Top rated</h2>
 <p class="sub">Highest-scored community projects — stars × maintenance activity × license × docs signals.</p></div>
@@ -232,7 +232,7 @@ app.get('/skills', (c) => {
 
 app.get('/categories', (c) => {
   const grid = (cats: typeof CATEGORIES) => `<div class="catgrid">${cats.map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>`;
-  const body = `<main class="wrap">
+  const body = `<main id="main" class="wrap">
 <div class="crumbs"><a href="/">Home</a> › Categories</div>
 <div class="section" style="margin-top:14px"><h1 class="page">All categories</h1>
 <p class="sub" style="color:var(--muted);margin-top:4px">${TOPIC_CATEGORIES.length} topic categories across ${STATS.total.toLocaleString()} entries, sorted by size.</p>
@@ -325,7 +325,7 @@ app.get('/s/:slug', (c) => {
   const snip = installSnippet(i);
   const related = ITEMS.filter((x) => x.category === i.category && x.slug !== i.slug).slice(0, 6);
   const breakdown = scoreBreakdown(i);
-  const body = `<main class="wrap">
+  const body = `<main id="main" class="wrap">
 <div class="crumbs"><a href="/">Home</a> › <a href="/${i.type === 'server' ? 'servers' : 'skills'}">${i.type === 'server' ? 'Servers' : 'Skills'}</a> › <a href="/category/${catSlug(i.category)}">${esc(i.category)}</a> › ${esc(i.name)}</div>
 <div class="detail">
 <div>
@@ -351,7 +351,7 @@ ${i.scopes.map((s) => `<span class="badge">${esc(s)}</span>`).join('')}
 ${i.language ? `<span class="statchip"><b>${esc(i.language)}</b></span>` : ''}
 </div>
 <div><a class="btn" style="display:inline-block;text-decoration:none" href="${esc(i.url)}" data-track="repo_click" rel="noopener nofollow">View on GitHub →</a></div>
-${snip ? `<div class="section" style="margin:34px 0"><h2>Installation</h2><p class="sub">${esc(snip.label)}</p><pre class="code"><button class="copybtn" type="button">Copy</button><code>${esc(snip.code)}</code></pre></div>` : ''}
+${snip ? `<div class="section" style="margin:34px 0"><h2>Installation</h2><p class="sub">${esc(snip.label)}</p><pre class="code"><button class="copybtn" type="button" aria-live="polite">Copy</button><code>${esc(snip.code)}</code></pre></div>` : ''}
 <div class="section" style="margin:34px 0">
 <h2>Quality score breakdown</h2>
 <p class="sub">Transparent heuristic — same formula for every entry. Total <b style="color:var(--text)">${i.score}/100</b>.</p>
@@ -402,7 +402,7 @@ ${related.length ? `<div class="section"><h2>Related in ${esc(i.category)}</h2><
 });
 
 app.get('/about', (c) => {
-  const body = `<main class="wrap"><div class="section" style="max-width:760px">
+  const body = `<main id="main" class="wrap"><div class="section" style="max-width:760px">
 <div class="crumbs" style="margin-bottom:14px"><a href="/">Home</a> › About</div>
 <h1 class="page">About MCP Index</h1>
 <p style="margin:12px 0;color:var(--muted)">MCP Index is a structured directory of Model Context Protocol (MCP) servers and SKILL.md-based agent skills. Every entry is enriched with live GitHub metadata — stars, last-commit recency, language, license — and given a transparent heuristic quality score so you can quickly judge whether a project is production-ready or abandoned.</p>
@@ -524,7 +524,7 @@ app.get('/api/stats', async (c) => {
 
 app.notFound((c) => c.html(layout({
   title: 'Not found — MCP Index', desc: 'Page not found', path: '/404',
-  body: `<main class="wrap"><div class="section" style="text-align:center;padding:40px 0 0"><h1 class="page">404 — Not found</h1><p style="color:var(--muted);margin:10px 0 20px">${c.req.path.startsWith('/s/') ? 'This entry may have been removed in a weekly refresh.' : 'The page you\u2019re looking for doesn\u2019t exist.'}</p><a class="btn" style="text-decoration:none" href="/">Back to home</a></div>
+  body: `<main id="main" class="wrap"><div class="section" style="text-align:center;padding:40px 0 0"><h1 class="page">404 — Not found</h1><p style="color:var(--muted);margin:10px 0 20px">${c.req.path.startsWith('/s/') ? 'This entry may have been removed in a weekly refresh.' : 'The page you\u2019re looking for doesn\u2019t exist.'}</p><a class="btn" style="text-decoration:none" href="/">Back to home</a></div>
 <div class="section"><div class="section-head"><h2>These ones exist</h2></div><div class="grid">${ITEMS.slice(0, 6).map(card).join('')}</div></div></main>`,
 }), 404));
 

@@ -35,6 +35,8 @@ nav.top a{color:var(--muted);font-size:13.5px;font-weight:600;padding:7px 11px;b
 nav.top a:hover{color:var(--text);background:var(--card2);text-decoration:none}
 nav.top a[aria-current]{color:var(--text)}
 /* hero */
+.skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--accent);color:#0b0b12;padding:10px 18px;border-radius:0 0 10px 0;font-weight:600;text-decoration:none}
+.skip:focus{left:0}
 .hero{padding:72px 0 40px;text-align:center;background:radial-gradient(ellipse 60% 55% at 50% -12%,rgba(139,147,255,.16),transparent),radial-gradient(ellipse 40% 40% at 80% 0%,rgba(177,140,255,.07),transparent)}
 .hero .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:5px 14px;margin-bottom:22px}
 .hero .eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
@@ -252,6 +254,7 @@ ${(Array.isArray(opts.jsonld) ? opts.jsonld : opts.jsonld ? [opts.jsonld] : []).
 <style>${CSS}</style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="wrap">
 <a class="logo" href="/"><span class="dot" aria-hidden="true">M</span>MCP Index</a>
 ${headerSearch}
