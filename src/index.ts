@@ -9,6 +9,15 @@ type Env = { METRICS: KVNamespace };
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Content only changes on deploy (dataset is inlined), so pages are safe to
+// cache briefly at the edge/browser. Short TTL keeps post-deploy staleness bounded.
+app.use('*', async (c, next) => {
+  await next();
+  if ((c.req.method === 'GET' || c.req.method === 'HEAD') && !c.req.path.startsWith('/api/') && !c.res.headers.has('Cache-Control')) {
+    c.res.headers.set('Cache-Control', 'public, max-age=300');
+  }
+});
+
 const INSTALL_LABEL: Record<string, string> = {
   npx: 'npm / npx', uvx: 'Python (uvx / pip)', docker: 'Docker', 'go-install': 'Go', cargo: 'Rust (cargo)',
   dotnet: '.NET', jar: 'Java', source: 'From source', 'skill-md': 'SKILL.md',
@@ -16,7 +25,7 @@ const INSTALL_LABEL: Record<string, string> = {
 
 function parseQuery(c: { req: { query: (k: string) => string | undefined } }): Query {
   return {
-    q: c.req.query('q') || undefined,
+    q: (c.req.query('q') || '').trim().slice(0, 160).split(/\s+/).slice(0, 10).join(' ') || undefined,
     type: c.req.query('type') || undefined,
     category: c.req.query('category') || undefined,
     lang: c.req.query('lang') || undefined,

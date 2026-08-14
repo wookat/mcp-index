@@ -17,12 +17,10 @@ export interface Item {
   license: string | null;
   archived: boolean;
   pushedAt: string;
-  createdAt: string;
   topics: string[];
   install: string;
   activity: string;
   score: number;
-  source: string;
 }
 
 interface Dataset {

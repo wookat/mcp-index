@@ -75,15 +75,16 @@ for (const e of entries) {
     license: m.license,
     archived: m.archived,
     pushedAt: m.pushedAt,
-    createdAt: m.createdAt,
     topics: (m.topics || []).slice(0, 8),
     install: installMethod(e, m),
     activity: activity(m),
     score: qualityScore(e, m),
-    source: e.source,
   });
 }
 out.sort((a, b) => b.score - a.score || b.stars - a.stars);
+// The dataset is inlined into the worker bundle (free-plan gzip limit 3MB);
+// warn well before the entry count pushes the bundle toward that ceiling.
+if (out.length > 15000) console.warn(`WARNING: ${out.length} entries — bundle size approaching worker limits, consider splitting dataset out of the bundle`);
 writeFileSync(join(DATA, 'index.json'), JSON.stringify({ generatedAt: new Date().toISOString(), count: out.length, items: out }));
 const stats = {
   total: out.length,
