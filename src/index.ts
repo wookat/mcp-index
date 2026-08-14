@@ -6,7 +6,7 @@ import OG_IMAGE from './og.png';
 
 const INDEXNOW_KEY = '8b38cfa490ebd06f8b4ec7290a002646';
 
-type Env = { METRICS: KVNamespace };
+type Env = { METRICS: KVNamespace; TRACK_RL: { limit(opts: { key: string }): Promise<{ success: boolean }> } };
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -504,14 +504,10 @@ app.get('/sitemap.xml', (c) => {
 // acceptable for anonymous usage metrics.
 app.post('/api/track', async (c) => {
   if (parseInt(c.req.header('content-length') || '0', 10) > 1024) return c.json({ ok: false }, 400);
-  // Per-IP minute bucket: keeps a single client from flooding the counters.
+  // Per-IP rate limit via the native ratelimit binding (KV can't count
+  // sub-minute: edge read caching hides increments for up to 60s).
   const ip = c.req.header('cf-connecting-ip');
-  if (ip) {
-    const rlKey = `rl:${ip}:${new Date().toISOString().slice(0, 16)}`;
-    const n = parseInt((await c.env.METRICS.get(rlKey)) || '0', 10);
-    if (n >= 30) return c.json({ ok: false }, 429);
-    await c.env.METRICS.put(rlKey, String(n + 1), { expirationTtl: 120 });
-  }
+  if (ip && !(await c.env.TRACK_RL.limit({ key: ip })).success) return c.json({ ok: false }, 429);
   try {
     const { ev } = await c.req.json<{ ev: string }>();
     const allowed = ['pageview', 'copy_install', 'repo_click', 'github_click'];
