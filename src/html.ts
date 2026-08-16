@@ -60,7 +60,9 @@ nav.top a[aria-current]{color:var(--text)}
 .hero .eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
 .hero .eyebrow .pulse.warn{background:var(--orange);box-shadow:0 0 0 3px rgba(251,146,60,.18)}
 .hero h1{font-size:clamp(30px,5.6vw,52px);font-weight:800;letter-spacing:-.035em;line-height:1.08}
-.hero h1 .grad{background:linear-gradient(90deg,var(--accent),#c4a5ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1 .grad{background:linear-gradient(90deg,var(--accent),#c4a5ff,var(--accent));background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gradshift 8s ease-in-out infinite}
+@keyframes gradshift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@media(prefers-reduced-motion:reduce){.hero h1 .grad{animation:none}}
 .hero p.sub{color:var(--muted);font-size:clamp(15px,2.4vw,17.5px);max-width:600px;margin:16px auto 0}
 .trychips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
 .trychips .lbl{color:var(--faint);font-size:12.5px;align-self:center}
@@ -136,14 +138,16 @@ kbd.hint{border:1px solid var(--border2);background:var(--bg2);color:var(--faint
 /* sections */
 .section{margin:44px 0}
 .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.section h2{font-size:21px;font-weight:800;letter-spacing:-.02em}
+.section h2{font-size:21px;font-weight:800;letter-spacing:-.02em;position:relative;padding-left:14px}
+.section h2::before{content:"";position:absolute;left:0;top:.18em;bottom:.12em;width:4px;border-radius:2px;background:linear-gradient(180deg,var(--accent),#c4a5ff)}
 .section p.sub{color:var(--muted);font-size:13.5px;margin-top:3px}
 .section .more{font-size:13.5px;font-weight:600;white-space:nowrap}
 h1.page{font-size:clamp(22px,4vw,30px);font-weight:800;letter-spacing:-.025em}
 .catgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:16px}
-.catgrid a{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 15px;color:var(--text2);font-size:13.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px;transition:border-color .15s}
-.catgrid a:hover{border-color:var(--accent);color:var(--text);text-decoration:none}
-.catgrid a span{color:var(--faint);font-weight:500;font-variant-numeric:tabular-nums}
+.catgrid a{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 15px 11px 12px;color:var(--text2);font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:10px;transition:border-color .15s,transform .15s}
+.catgrid a:hover{border-color:var(--accent);color:var(--text);text-decoration:none;transform:translateY(-1px)}
+.catgrid a span.n{margin-left:auto;color:var(--faint);font-weight:500;font-variant-numeric:tabular-nums}
+.catgrid .cg{width:26px;height:26px;border-radius:8px;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:#0b0b12}
 .pager{display:flex;gap:8px;justify-content:center;margin:28px 0;flex-wrap:wrap}
 .pager a,.pager span{padding:8px 14px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:13.5px}
 .pager span.cur{border-color:var(--accent);color:var(--accent);font-weight:700}
@@ -376,6 +380,13 @@ export function avatar(name: string, cls = 'avatar'): string {
   const hue = AVATAR_HUES[h % AVATAR_HUES.length];
   const ch = (name.replace(/^.*\//, '')[0] || 'm').toUpperCase();
   return `<span class="${cls}" style="background:linear-gradient(135deg,hsl(${hue},70%,74%),hsl(${(hue + 40) % 360},65%,62%))" aria-hidden="true">${esc(ch)}</span>`;
+}
+
+export function catLink(cat: { name: string; slug: string; count: number }): string {
+  let h = 0;
+  for (let k = 0; k < cat.name.length; k++) h = (h * 31 + cat.name.charCodeAt(k)) >>> 0;
+  const hue = AVATAR_HUES[h % AVATAR_HUES.length];
+  return `<a href="/category/${cat.slug}"><span class="cg" style="background:linear-gradient(135deg,hsl(${hue},70%,74%),hsl(${(hue + 40) % 360},65%,62%))" aria-hidden="true">${esc(cat.name[0].toUpperCase())}</span>${esc(cat.name)}<span class="n">${cat.count}</span></a>`;
 }
 
 export function grade(score: number): string {
