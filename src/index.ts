@@ -16,6 +16,7 @@ const app = new Hono<{ Bindings: Env }>();
 // Zone WAF edit permission is available.
 app.use('/search', rateLimitByIp);
 app.use('/api/stats', rateLimitByIp);
+app.use('/api/suggest', rateLimitByIp);
 async function rateLimitByIp(c: Context<{ Bindings: Env }>, next: () => Promise<void>): Promise<Response | void> {
   const ip = c.req.header('cf-connecting-ip');
   if (ip && !(await c.env.TRACK_RL.limit({ key: `${c.req.path}:${ip}` })).success) {
@@ -189,6 +190,7 @@ ${eyebrow}
 <h1>Find the right <span class="grad">MCP server</span><br>and <span class="grad">agent skill</span>, fast</h1>
 <p class="sub">A structured, quality-scored directory of ${STATS.servers.toLocaleString()} Model Context Protocol servers and ${STATS.skills.toLocaleString()} agent skills — with maintenance signals, install methods and stars.</p>
 <form method="get" action="/search"><div class="searchbar"><input type="search" name="q" placeholder="Try: postgres, browser automation, stripe…" autofocus><kbd class="hint" aria-hidden="true">/</kbd><button class="btn" type="submit">Search</button></div></form>
+<div class="trychips" aria-label="Popular searches"><span class="lbl">Popular:</span>${['postgres', 'browser automation', 'memory', 'stripe', 'kubernetes', 'slack'].map((t) => `<a class="chip" href="/search?q=${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div>
 <div class="stats">
 <span class="stat"><b>${STATS.servers.toLocaleString()}</b> servers</span>
 <span class="stat"><b>${STATS.skills.toLocaleString()}</b> skills</span>
@@ -539,6 +541,19 @@ app.post('/api/track', async (c) => {
     await c.env.METRICS.put(key, String(cur + 1), { expirationTtl: 60 * 60 * 24 * 400 });
   } catch { /* ignore malformed beacons */ }
   return c.json({ ok: true });
+});
+
+// Typeahead suggestions: reuses the ranked search over the inlined dataset.
+// Responses are tiny and cacheable — content only changes on deploy.
+app.get('/api/suggest', (c) => {
+  const q = (c.req.query('q') || '').trim().slice(0, 80);
+  if (q.length < 2) return c.json({ total: 0, items: [] });
+  const { results, total } = search({ q, page: 1 }, 8);
+  c.header('Cache-Control', 'public, max-age=300');
+  return c.json({
+    total,
+    items: results.map((i) => ({ slug: i.slug, name: i.name, type: i.type, stars: i.stars, score: i.score, activity: i.activity })),
+  });
 });
 
 app.get('/api/stats', async (c) => {
