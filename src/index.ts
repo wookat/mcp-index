@@ -1,7 +1,7 @@
 import { Hono, Context } from 'hono';
 import { ITEMS, BY_SLUG, CATEGORIES, TOPIC_CATEGORIES, COLLECTIONS, STATS, GENERATED_AT, catSlug, search, matchesText, matchesDims, FILTER_DIMS, Query, Item } from './data';
 import SCORING from './scoring.json';
-import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, grade, ACTIVITY_LABEL, ACTIVITY_TITLE, SITE } from './html';
+import { layout, esc, card, row, pager, starFmt, daysAgo, avatar, grade, catLink, ACTIVITY_LABEL, ACTIVITY_TITLE, SITE } from './html';
 import OG_IMAGE from './og.png';
 
 const INDEXNOW_KEY = '8b38cfa490ebd06f8b4ec7290a002646';
@@ -217,7 +217,7 @@ ${eyebrow}
 </div>
 <div class="section cat-home">
 <div class="section-head"><div><h2>Browse by category</h2></div><span class="more"><a href="/categories">All ${STATS.categories} categories →</a></span></div>
-<div class="catgrid">${TOPIC_CATEGORIES.slice(0, 36).map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>
+<div class="catgrid">${TOPIC_CATEGORIES.slice(0, 36).map(catLink).join('')}</div>
 </div>
 </main>`;
   const jsonld = JSON.stringify({
@@ -262,7 +262,7 @@ app.get('/skills', (c) => {
 });
 
 app.get('/categories', (c) => {
-  const grid = (cats: typeof CATEGORIES) => `<div class="catgrid">${cats.map((cat) => `<a href="/category/${cat.slug}">${esc(cat.name)}<span>${cat.count}</span></a>`).join('')}</div>`;
+  const grid = (cats: typeof CATEGORIES) => `<div class="catgrid">${cats.map(catLink).join('')}</div>`;
   const body = `<main id="main" class="wrap">
 <div class="crumbs"><a href="/">Home</a> › Categories</div>
 <div class="section" style="margin-top:14px"><h1 class="page">All categories</h1></div>
