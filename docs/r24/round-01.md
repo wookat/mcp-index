@@ -47,3 +47,11 @@
   - Playwright 实测：输入触发下拉（8 条 + "All N results"）、ArrowDown 高亮、Enter 直达 `/s/crystaldba-postgres-mcp`、Escape 关闭、纯 Enter 仍走表单提交 `/search?q=…`；header 搜索（非首页）下拉同样生效。
 - 部署前线上基线 Lighthouse（home，移动模拟）：Perf 100 / A11y 100 / BP 100 / SEO 100，LCP 1.0s，CLS 0。
 - 线上复测（部署后 375/1440 截图 + Lighthouse + 核心流程）：待部署后补充于本文档。
+
+## 5. 部署与线上复测（已执行，2026-08-16）
+
+- 部署：merge #17 → main → `wrangler deploy`（Version 5be196dd）。
+- 线上实测 https://mcp.zalize.com ：
+  - `GET /api/suggest?q=postgres` → total 62，8 条建议；
+  - Playwright 1440/375：输入触发下拉、ArrowDown+Enter 直达 `/s/crystaldba-postgres-mcp`；截图存 `docs/r24/live/round-01/`；
+  - Lighthouse（移动模拟）：Perf 100 / A11y 100 / BP 100 / SEO 100，LCP 1.0s，CLS 0，TBT 0ms —— 新增 typeahead 未损性能。
