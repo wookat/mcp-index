@@ -55,7 +55,7 @@ nav.top a[aria-current]{color:var(--text)}
 /* hero */
 .skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--accent);color:#0b0b12;padding:10px 18px;border-radius:0 0 10px 0;font-weight:600;text-decoration:none}
 .skip:focus{left:0}
-.hero{padding:72px 0 40px;text-align:center;background:radial-gradient(ellipse 60% 55% at 50% -12%,rgba(139,147,255,.16),transparent),radial-gradient(ellipse 40% 40% at 80% 0%,rgba(177,140,255,.07),transparent)}
+.hero{padding:72px 0 40px;text-align:center;background:radial-gradient(ellipse 60% 55% at 50% -12%,rgba(139,147,255,.16),transparent),radial-gradient(ellipse 40% 40% at 80% 0%,rgba(177,140,255,.07),transparent),radial-gradient(circle at 1px 1px,rgba(139,147,255,.07) 1px,transparent 1.6px);background-size:auto,auto,24px 24px}
 .hero .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:5px 14px;margin-bottom:22px}
 .hero .eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
 .hero .eyebrow .pulse.warn{background:var(--orange);box-shadow:0 0 0 3px rgba(251,146,60,.18)}
@@ -125,7 +125,7 @@ kbd.hint{border:1px solid var(--border2);background:var(--bg2);color:var(--faint
 /* grid cards (home) */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;margin:18px 0}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:9px;transition:border-color .15s,transform .15s;position:relative}
-.card:hover{border-color:rgba(139,147,255,.4);transform:translateY(-1px)}
+.card:hover{border-color:rgba(139,147,255,.4);transform:translateY(-1px);box-shadow:0 8px 28px -12px rgba(139,147,255,.35)}
 .card .toprow{display:flex;gap:10px;align-items:center}
 .card .avatar{width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#0b0b12}
 .card h3{font-size:14.5px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere;line-height:1.35}
@@ -229,6 +229,7 @@ kbd.hint{display:none}
 main.home{display:flex;flex-direction:column}
 main.home .section{margin:26px 0}
 main.home .cat-home{order:-1}
+main.home .cat-home .catgrid a:nth-child(n+13){display:none}
 }
 `;
 
